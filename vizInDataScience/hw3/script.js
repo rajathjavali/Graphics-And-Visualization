@@ -74,31 +74,35 @@ function update(error, data) {
 
     bar1Rect.enter()
         .append("rect")
-        .style("opacity", 0)
-        .transition()
-        .duration(1000)
-        .style("opacity", 1)
-        .attr("x", (d, i) => iScale(i))
+		.attr("x", (d, i) => iScale(i))
         .attr("y", 0)
         .attr("width", 10)
+        .attr("height", 0)
+        .style("opacity", 0)
+        .transition()
+        .duration(2000)
+        .style("opacity", 1)
         .attr("height", d => aScale(d.a))
         .style("fill", "steelblue");
 
     bar1Rect.exit()
-        .attr("opacity", 1)
+        .attr("height", d => aScale(d.a))
         .transition()
         .duration(500)
-        .attr("opacity", 0)
+        .attr("height", 0)
         .remove();
     
     bar1Rect = bar1Rect.merge(bar1Rect);
 
     bar1Rect
-        .transition()
-        .duration(1000)
-        .attr("x", (d, i) => iScale(i))
-        .attr("y", 0)
+		.transition()
+		.duration(500)
+		.attr("y", 0)
         .attr("width", 10)
+		.attr("height", 0)//d => aScale(d.a))
+        .transition()
+        .duration(1000) 
+		.attr("x", (d, i) => iScale(i))
         .attr("height", d => aScale(d.a))
         .style("fill", "steelblue");
 
@@ -108,31 +112,35 @@ function update(error, data) {
                     
     bar2Rect.enter()
         .append("rect")
-        .style("opacity", 0)
-        .transition()
-        .duration(1000)
-        .style("opacity", 1)
-        .attr("x", (d, i) => iScale(i))
+		.attr("x", (d, i) => iScale(i))
         .attr("y", 0)
         .attr("width", 10)
+        .style("opacity", 0)
+        .attr("height", 0)
+        .transition()
+        .duration(2000)
+        .style("opacity", 1)
         .attr("height", d => bScale(d.b))
         .style("fill", "steelblue");
     
     bar2Rect.exit()
-        .attr("opacity", 1)
+		.attr("height", d => aScale(d.a))
         .transition()
         .duration(500)
-        .attr("opacity", 0)
+        .attr("height", 0)
         .remove();
     
     bar2Rect = bar2Rect.merge(bar2Rect);
 
     bar2Rect
+		.transition()
+		.duration(500)
+        .attr("y", 0)
+        .attr("width", 10)
+        .attr("height", 0)
         .transition()
         .duration(1000)
         .attr("x", (d, i) => iScale(i))
-        .attr("y", 0)
-        .attr("width", 10)
         .attr("height", d => bScale(d.b))
         .style("fill", "steelblue");
 
@@ -211,6 +219,10 @@ function update(error, data) {
         .append("circle")
         .attr("cx", d => aScale(d.a))
         .attr("cy", d => bScale(d.b))
+		.attr("opacity", 0)
+		.transition()
+		.duration(1500)
+		.attr("opacity", 1)
         .attr("r", 5)
         .style("fill", "steelblue");
 
@@ -226,7 +238,7 @@ function update(error, data) {
 
     circles
         .transition()
-        .duration(500)
+        .duration(1000)
         .attr("cx", d => aScale(d.a))
         .attr("cy", d => bScale(d.b))
         .attr("r", 5)
