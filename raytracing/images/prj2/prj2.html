@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Ray Tracing - Project 2</title>
+	<style type="text/css">
+		h2.padding1 {
+			padding-left: 20px;
+		}
+	</style>
+</head>
+<body>
+<h1 align="center">Ray Tracing - Project 2</h1><hr style="border: 2px solid black;">
+<h2 align="left" class="padding1">Rendered Image</h2>
+<img src="http://www.cs.utah.edu/~lkira07/raytracing/prj2.jpg" border= "1" style="width:800px;height:600px;border-width:2px;border-color:black;">
+<br>
+<br>
+<hr>
+<h2 align="left" class="padding1">Z Buffer Image</h2>
+<img src="http://www.cs.utah.edu/~lkira07/raytracing/prj2_z.jpg" border= "1" style="width:800px;height:600px;border-width:2px;border-color:black;">
+<br>
+<br>
+<hr>
+<h2 align="left" class="padding1">Changed Output</h2>
+<img src="http://www.cs.utah.edu/~lkira07/raytracing/prj2prob1.jpg" border= "1" style="width:800px;height:600px;border-width:2px;border-color:black;">
+<br>
+When Light Intensity and angle of incidence is considered for specular component, its not matching with the ray tracing image. So in order to get similar reflection, had to omit it. 
+<br>
+<img src="http://www.cs.utah.edu/~lkira07/raytracing/prj2prob2.jpg" border= "1" style="width:800px;height:600px;border-width:2px;border-color:black;">
+<br>
+The 3rd sphere has rotational component, so had to call transform on the normal and position from the parent node. 
+<br>
+<br>
+<hr>
+<p>
+	<h3><b><U>Hardware Configuration</U></b></h3> 
+	<table style="border-color: white; text-align: left">
+		<tr>
+			<th>
+				Processor:
+			</th>
+			<td>
+				Intel(R) Core(TM) i7-7700HQ CPU @2.80Ghz
+			</td>
+		</tr>
+		<tr>
+			<th>
+				Ram:
+			</th>
+			<td>
+				16 GB
+			</td>
+		</tr>
+		<tr>
+			<th>
+				GPU:
+			</th>
+			<td>
+				4 GB Nvidia GeForce GTX 1050 Ti
+			</td>
+		</tr>
+		<tr>
+			<th>
+				System:
+			</th>
+			<td>
+				Windows 10 Home
+			</td>
+		</tr>
+		<tr>
+			<th>
+				Rendering Time:
+			</th>
+			<td>
+				1.67 seconds (multithreaded(8 Threads))
+			</td>
+		</tr>
+		<tr>
+			<th>
+				Threading Library:
+			</th>
+			<td>
+				Intel TBB
+			</td>
+		</tr>
+	</table>
+
+</p>
+<hr>
+</body>
+</html>

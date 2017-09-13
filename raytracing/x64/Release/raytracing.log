@@ -1,0 +1,49 @@
+﻿  Sphere.cpp
+d:\utah masters\1st sem\ray tracing\raytracing\source\scene.h(104): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+d:\utah masters\1st sem\ray tracing\raytracing\source\scene.h(230): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+source\Sphere.cpp(31): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+  raytracing.cpp
+d:\utah masters\1st sem\ray tracing\raytracing\source\scene.h(104): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+d:\utah masters\1st sem\ray tracing\raytracing\source\scene.h(230): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+source\raytracing.cpp(52): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+source\raytracing.cpp(62): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+source\raytracing.cpp(97): error C2511: 'Color MtlBlinn::Shade(const Ray &,const HitInfo &,const LightList &) const': overloaded member function not found in 'MtlBlinn'
+  d:\utah masters\1st sem\ray tracing\raytracing\source\materials.h(20): note: see declaration of 'MtlBlinn'
+source\raytracing.cpp(109): error C2678: binary '*': no operator found which takes a left-hand operand of type 'unknown' (or there is no acceptable conversion)
+  d:\utah masters\1st sem\ray tracing\raytracing\source\cyColor.h(57): note: could be 'cy::Color cy::operator *(const float,const cy::Color &)' [found using argument-dependent lookup]
+  d:\utah masters\1st sem\ray tracing\raytracing\source\cyColor.h(138): note: or       'cy::ColorA cy::operator *(const float,const cy::ColorA &)' [found using argument-dependent lookup]
+  d:\utah masters\1st sem\ray tracing\raytracing\source\cyPoint.h(263): note: or       'cy::Point3<float> cy::Point3<float>::operator *(const TYPE,const cy::Point3<TYPE> &)' [found using argument-dependent lookup]
+          with
+          [
+              TYPE=float
+          ]
+  d:\utah masters\1st sem\ray tracing\raytracing\source\cyMatrix.h(284): note: or       'cy::Matrix3<float> cy::Matrix3<float>::operator *(const TYPE,const cy::Matrix3<TYPE> &)' [found using argument-dependent lookup]
+          with
+          [
+              TYPE=float
+          ]
+  d:\utah masters\1st sem\ray tracing\raytracing\source\cyPoint.h(364): note: or       'cy::Point4<float> cy::Point4<float>::operator *(const TYPE,const cy::Point4<TYPE> &)' [found using argument-dependent lookup]
+          with
+          [
+              TYPE=float
+          ]
+  d:\utah masters\1st sem\ray tracing\raytracing\source\cyPoint.h(164): note: or       'cy::Point2<float> cy::Point2<float>::operator *(const TYPE,const cy::Point2<TYPE> &)' [found using argument-dependent lookup]
+          with
+          [
+              TYPE=float
+          ]
+  source\raytracing.cpp(109): note: while trying to match the argument list '(unknown, Color)'
+source\raytracing.cpp(116): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+source\raytracing.cpp(116): error C2597: illegal reference to non-static member 'MtlBlinn::glossiness'
+source\raytracing.cpp(158): warning C4244: 'argument': conversion from 'double' to 'const float', possible loss of data
+source\raytracing.cpp(172): error C2660: 'Material::Shade': function does not take 3 arguments
+source\raytracing.cpp(173): warning C4244: '=': conversion from 'float' to 'unsigned char', possible loss of data
+source\raytracing.cpp(174): warning C4244: '=': conversion from 'float' to 'unsigned char', possible loss of data
+source\raytracing.cpp(175): warning C4244: '=': conversion from 'float' to 'unsigned char', possible loss of data
+  viewport.cpp
+d:\utah masters\1st sem\ray tracing\raytracing\source\scene.h(104): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+d:\utah masters\1st sem\ray tracing\raytracing\source\scene.h(230): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  xmlload.cpp
+d:\utah masters\1st sem\ray tracing\raytracing\source\scene.h(104): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+d:\utah masters\1st sem\ray tracing\raytracing\source\scene.h(230): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+source\xmlload.cpp(96): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
