@@ -66,12 +66,75 @@ function update(error, data) {
         .domain([0, data.length])
         .range([0, 110]);
 
-
+    console.log(data);
     // ****** TODO: PART III (you will also edit in PART V) ******
-
     // TODO: Select and update the 'a' bar chart bars
+    let bar1 = d3.select("#bar1");
+    let bar1Rect = bar1.selectAll("rect").data(data);
 
-    // TODO: Select and update the 'b' bar chart bars
+    bar1Rect.enter()
+        .append("rect")
+        .style("opacity", 0)
+        .transition()
+        .duration(1000)
+        .style("opacity", 1)
+        .attr("x", (d, i) => iScale(i))
+        .attr("y", 0)
+        .attr("width", 10)
+        .attr("height", d => aScale(d.a))
+        .style("fill", "steelblue");
+
+    bar1Rect.exit()
+        .attr("opacity", 1)
+        .transition()
+        .duration(500)
+        .attr("opacity", 0)
+        .remove();
+    
+    bar1Rect = bar1Rect.merge(bar1Rect);
+
+    bar1Rect
+        .transition()
+        .duration(1000)
+        .attr("x", (d, i) => iScale(i))
+        .attr("y", 0)
+        .attr("width", 10)
+        .attr("height", d => aScale(d.a))
+        .style("fill", "steelblue");
+
+        // TODO: Select and update the 'b' bar chart bars
+    let bar2 = d3.select("#bar2");
+    let bar2Rect = bar2.selectAll("rect").data(data);
+                    
+    bar2Rect.enter()
+        .append("rect")
+        .style("opacity", 0)
+        .transition()
+        .duration(1000)
+        .style("opacity", 1)
+        .attr("x", (d, i) => iScale(i))
+        .attr("y", 0)
+        .attr("width", 10)
+        .attr("height", d => bScale(d.b))
+        .style("fill", "steelblue");
+    
+    bar2Rect.exit()
+        .attr("opacity", 1)
+        .transition()
+        .duration(500)
+        .attr("opacity", 0)
+        .remove();
+    
+    bar2Rect = bar2Rect.merge(bar2Rect);
+
+    bar2Rect
+        .transition()
+        .duration(1000)
+        .attr("x", (d, i) => iScale(i))
+        .attr("y", 0)
+        .attr("width", 10)
+        .attr("height", d => bScale(d.b))
+        .style("fill", "steelblue");
 
     // TODO: Select and update the 'a' line chart path using this line generator
 
@@ -79,6 +142,31 @@ function update(error, data) {
         .x((d, i) => iScale(i))
         .y((d) => aScale(d.a));
 
+    let line1 = d3.select("#line1");
+    let lineGraph1 = line1.select("path").data(data)
+                        .style("opacity", 0)
+                        .transition()
+                        .duration(1000)
+                        .style("opacity", 1)
+                        .attr("d", aLineGenerator(data))
+                        .attr("stroke", "steelblue")
+                        .attr("stroke-width", 1)
+                        .attr("fill", "none");
+ 
+    let bLineGenerator = d3.line()
+        .x((d, i) => iScale(i))
+        .y((d) => aScale(d.b));
+
+    let line2 = d3.select("#line2");
+    let lineGraph2 = line2.select("path").data(data)
+                        .style("opacity", 0)
+                        .transition()
+                        .duration(1000)
+                        .style("opacity", 1)
+                        .attr("d", bLineGenerator(data))
+                        .attr("stroke", "steelblue")
+                        .attr("stroke-width", 1)
+                        .attr("fill", "none");
     // TODO: Select and update the 'b' line chart path (create your own generator)
 
     // TODO: Select and update the 'a' area chart path using this area generator
@@ -87,11 +175,80 @@ function update(error, data) {
         .y0(0)
         .y1(d => aScale(d.a));
 
+    let area1 = d3.select("#area1");
+    let areaGraph1 = area1.select("path").data(data)
+                        .style("opacity", 0)
+                        .transition()
+                        .duration(1000)
+                        .style("opacity", 1)
+                        .attr("d", aAreaGenerator(data))
+                        .attr("stroke", "steelblue")
+                        .attr("stroke-width", 1)
+                        .attr("fill", "steelblue");
+
+    let bAreaGenerator = d3.area()
+        .x((d, i) => iScale(i))
+        .y0(0)
+        .y1(d => aScale(d.b));
+
+    let area2 = d3.select("#area2");
+    let areaGraph2 = area2.select("path").data(data)
+                        .style("opacity", 0)
+                        .transition()
+                        .duration(1000)
+                        .style("opacity", 1)
+                        .attr("d", bAreaGenerator(data))
+                        .attr("stroke", "steelblue")
+                        .attr("stroke-width", 1)
+                        .attr("fill", "steelblue");
     // TODO: Select and update the 'b' area chart path (create your own generator)
 
     // TODO: Select and update the scatterplot points
+    let scatterplot = d3.select("#scatterplot");
+    let circles = scatterplot.selectAll("circle").data(data);
 
+    circles.enter()
+        .append("circle")
+        .attr("cx", d => aScale(d.a))
+        .attr("cy", d => bScale(d.b))
+        .attr("r", 5)
+        .style("fill", "steelblue");
+
+
+    circles.exit()
+        .attr("opacity", 1)
+        .transition()
+        .duration(500)
+        .attr("opacity", 0)
+        .remove();
+    
+    circles = circles.merge(circles);
+
+    circles
+        .transition()
+        .duration(500)
+        .attr("cx", d => aScale(d.a))
+        .attr("cy", d => bScale(d.b))
+        .attr("r", 5)
+        .style("fill", "steelblue");
     // ****** TODO: PART IV ******
+
+    scatterplot.on("mouseover", function() {
+          let coords = d3.mouse(this);
+            d3.select(this)
+            .append("title")
+            .text("x: "+ coords[0]+ " y: "+coords[1])
+            .attr("x", coords[0])
+            .attr("y", coords[1])
+          
+          });
+    scatterplot.on("mouseout", function() {
+          let coords = d3.mouse(this);
+            d3.select(this)
+            .select("title")
+            .remove()
+          
+          });
 
 }
 
