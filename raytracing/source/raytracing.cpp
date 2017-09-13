@@ -68,6 +68,8 @@ int main()
 			Trace(i, j);
 		}
 	});
+
+	//ShowViewport();
 	/*for(int j = 0; j< camera.imgHeight; j++)
 		for (int i = 0; i < camera.imgWidth; i++)
 			Trace(i, j);*/
@@ -93,9 +95,12 @@ int main()
 // H = L+V/|L+V|
 // I0(V) = Summation of all lights { Ii*(N*Li)(kd + ks (N*Hi)^a)} + Iamb * kd;  
 // where I - intensity, N- normal to the material = ray.dir(if sphere), kd -diffusal const, ks - specular const, a - glossinesss
-Color MtlBlinn::Shade(const Ray &ray, const HitInfo &hInfo, const LightList &lights) const
+Color MtlBlinn::Shade(const Ray &ray, const HitInfo &hInfo, const LightList &lights, int bounceCount) const
 {
-
+	if (bounceCount == 0)
+		return Color(0, 0, 0);
+	if (bounceCount == 13)
+		int wqw = 0;
 	Color color;
 	color.r = color.b = color.g = 0;
 	Point3 Hi;
@@ -112,8 +117,21 @@ Color MtlBlinn::Shade(const Ray &ray, const HitInfo &hInfo, const LightList &lig
 
 		Point3 lDir = li->Direction(hInfo.p).GetNormalized();
 		Point3 viewDir = ray.dir.GetNormalized();
+		Color reflectedColor;
+		reflectedColor.SetBlack();
 		Hi = (lDir + viewDir).GetNormalized(); // half vector
-		color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse + specular *  pow(fmax(0,surfaceNormal.Dot(Hi)), glossiness));
+		if (reflection != Color(0,0,0))
+		{
+			Point3 rayDir = 2 * surfaceNormal * (surfaceNormal.Dot(viewDir)) - ray.dir;
+			Ray reflectedRay(hInfo.p, rayDir);
+			HitInfo temp;
+			temp.z = BIGFLOAT;
+			//temp = hInfo;
+			
+			if (traceNode(&rootNode, reflectedRay, temp, HIT_FRONT))
+				reflectedColor = temp.node->GetMaterial()->Shade(reflectedRay, temp, lights, (bounceCount - 1));
+		}
+		color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse + specular *  pow(fmax(0, surfaceNormal.Dot(Hi)), glossiness)) + reflection * reflectedColor;
 		color.ClampMinMax();
 	}
 	return color;
@@ -155,6 +173,8 @@ bool traceNode(Node *node, Ray &ray, HitInfo &hitInfo, int hitSide)
 }
 
 void Trace(int i, int j) {
+	if (i == 318 && j == 350)
+		int g = 0;
 	Point3 pixel_center_ij = startingPoint + (i + 0.5) * u + (j + 0.5) * v;
 	Point3 dir = pixel_center_ij - camera.pos;
 	Color pixelColour;
@@ -169,7 +189,7 @@ void Trace(int i, int j) {
 	if (traceNode(&rootNode, ray, hit_info, HIT_FRONT))
 	{
 		distanceBuffer[pixelIndexInImg] = hit_info.z;
-		pixelColour = hit_info.node->GetMaterial()->Shade(ray, hit_info, lights);
+		pixelColour = hit_info.node->GetMaterial()->Shade(ray, hit_info, lights, 16);
 		pixelArray[pixelIndexInImg].r = pixelColour.r * 255;
 		pixelArray[pixelIndexInImg].b = pixelColour.b * 255;
 		pixelArray[pixelIndexInImg].g = pixelColour.g * 255;
