@@ -66,14 +66,18 @@ function update(error, data) {
         .domain([0, data.length])
         .range([0, 110]);
 
-    console.log(data);
+    // console.log(data);
     // ****** TODO: PART III (you will also edit in PART V) ******
     // TODO: Select and update the 'a' bar chart bars
+
+    //------------------------------------------------------------------------------------------- Bar Graph 1 ---------------------------------------------------------------------------
     let bar1 = d3.select("#bar1");
     let bar1Rect = bar1.selectAll("rect").data(data);
 
     bar1Rect.enter()
         .append("rect")
+        .on("mouseover", function() {d3.select(this).style("fill", "orange")})
+        .on("mouseout", function() {d3.select(this).style("fill", "steelblue")})
 		.attr("x", (d, i) => iScale(i))
         .attr("y", 0)
         .attr("width", 10)
@@ -84,6 +88,8 @@ function update(error, data) {
         .style("opacity", 1)
         .attr("height", d => aScale(d.a))
         .style("fill", "steelblue");
+        
+
 
     bar1Rect.exit()
         .attr("height", d => aScale(d.a))
@@ -95,6 +101,8 @@ function update(error, data) {
     bar1Rect = bar1Rect.merge(bar1Rect);
 
     bar1Rect
+        .on("mouseover", function() {d3.select(this).style("fill", "orange")})
+        .on("mouseout", function() {d3.select(this).style("fill", "steelblue")})
 		.transition()
 		.duration(500)
 		.attr("y", 0)
@@ -105,8 +113,12 @@ function update(error, data) {
 		.attr("x", (d, i) => iScale(i))
         .attr("height", d => aScale(d.a))
         .style("fill", "steelblue");
+        
 
-        // TODO: Select and update the 'b' bar chart bars
+
+    // TODO: Select and update the 'b' bar chart bars
+
+    //------------------------------------------------------------------------------------------- Bar Graph 2 ---------------------------------------------------------------------------
     let bar2 = d3.select("#bar2");
     let bar2Rect = bar2.selectAll("rect").data(data);
                     
@@ -117,6 +129,8 @@ function update(error, data) {
         .attr("width", 10)
         .style("opacity", 0)
         .attr("height", 0)
+        .on("mouseover", function() {d3.select(this).style("fill", "red")})
+        .on("mouseout", function() {d3.select(this).style("fill", "steelblue")})
         .transition()
         .duration(2000)
         .style("opacity", 1)
@@ -133,6 +147,8 @@ function update(error, data) {
     bar2Rect = bar2Rect.merge(bar2Rect);
 
     bar2Rect
+        .on("mouseover", function() {d3.select(this).style("fill", "red")})
+        .on("mouseout", function() {d3.select(this).style("fill", "steelblue")})
 		.transition()
 		.duration(500)
         .attr("y", 0)
@@ -146,6 +162,7 @@ function update(error, data) {
 
     // TODO: Select and update the 'a' line chart path using this line generator
 
+    //------------------------------------------------------------------------------------------- Line Graph 1 ---------------------------------------------------------------------------
     let aLineGenerator = d3.line()
         .x((d, i) => iScale(i))
         .y((d) => aScale(d.a));
@@ -161,6 +178,7 @@ function update(error, data) {
                         .attr("stroke-width", 1)
                         .attr("fill", "none");
  
+    //------------------------------------------------------------------------------------------- Line Graph 2 ---------------------------------------------------------------------------
     let bLineGenerator = d3.line()
         .x((d, i) => iScale(i))
         .y((d) => aScale(d.b));
@@ -178,6 +196,8 @@ function update(error, data) {
     // TODO: Select and update the 'b' line chart path (create your own generator)
 
     // TODO: Select and update the 'a' area chart path using this area generator
+
+    //------------------------------------------------------------------------------------------- Area Graph 1 ---------------------------------------------------------------------------
     let aAreaGenerator = d3.area()
         .x((d, i) => iScale(i))
         .y0(0)
@@ -194,6 +214,7 @@ function update(error, data) {
                         .attr("stroke-width", 1)
                         .attr("fill", "steelblue");
 
+    //------------------------------------------------------------------------------------------- Area Graph 2 ---------------------------------------------------------------------------
     let bAreaGenerator = d3.area()
         .x((d, i) => iScale(i))
         .y0(0)
@@ -202,16 +223,18 @@ function update(error, data) {
     let area2 = d3.select("#area2");
     let areaGraph2 = area2.select("path").data(data)
                         .style("opacity", 0)
-                        .transition()
-                        .duration(1000)
-                        .style("opacity", 1)
-                        .attr("d", bAreaGenerator(data))
                         .attr("stroke", "steelblue")
                         .attr("stroke-width", 1)
-                        .attr("fill", "steelblue");
+                        .attr("fill", "steelblue")
+                        .transition()
+                        .duration(1000)
+                        .attr("d", bAreaGenerator(data))
+                        .style("opacity", 1);
     // TODO: Select and update the 'b' area chart path (create your own generator)
 
     // TODO: Select and update the scatterplot points
+
+    //------------------------------------------------------------------------------------------- ScatterPlot ----------------------------------------------------------------------------
     let scatterplot = d3.select("#scatterplot");
     let circles = scatterplot.selectAll("circle").data(data);
 
@@ -245,22 +268,25 @@ function update(error, data) {
         .style("fill", "steelblue");
     // ****** TODO: PART IV ******
 
-    scatterplot.on("mouseover", function() {
-          let coords = d3.mouse(this);
-            d3.select(this)
-            .append("title")
-            .text("x: "+ coords[0]+ " y: "+coords[1])
-            .attr("x", coords[0])
-            .attr("y", coords[1])
-          
-          });
-    scatterplot.on("mouseout", function() {
-          let coords = d3.mouse(this);
-            d3.select(this)
-            .select("title")
-            .remove()
-          
-          });
+    circles.on("click", function() {
+        let coords = d3.mouse(this);
+        let display = "x: "+coords[0]+", y: "+coords[1];
+        console.log(display);   
+    });
+
+    circles.on("mouseover", function(d) {
+        let coords = d3.mouse(this);
+        d3.select(this)
+        .append("title")
+        .text("Mouse Coord:\nx: "+ coords[0]+ " y: "+coords[1] + "\nPoint:\nx: " + d.a + " y: "+ d.b ) 
+    });
+
+    /*circles.on("mouseout", function() {
+        let coords = d3.mouse(this);
+        d3.select(this)
+        .select("title")
+        .remove()      
+    });*/
 
 }
 

@@ -38,54 +38,65 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 	x1 = (sqrt(delta) - b) / (2 * a);
 	x2 = (-1 * sqrt(delta) - b) / (2 * a);
 
-	/*if (x1 < 0 && x2 < 0)
-		return false;*/
+	if (x1 < 0 && x2 < 0)
+		return false;
 
+	// smallest val is always the front hit
 	if (hitSide == HIT_FRONT) {
-		if (hInfo.z > x1 && x1 > 0 && x1 > BIAS)
+		if(x1 > BIAS && x1 < x2 && hInfo.z > x1)
 		{
 			hInfo.z = x1;
 			hInfo.p = ray.p + x1 * ray.dir;
 			hInfo.N = -hInfo.p;
+			hInfo.front = true;
 			status = true;
 		}
-		if (hInfo.z > x2 && x2 > 0 && x2 > BIAS)
+		else if(x2 < x1 && hInfo.z > x2 && x2 > BIAS)
 		{
 			hInfo.z = x2;
 			hInfo.p = ray.p + x2 * ray.dir;
 			hInfo.N = -hInfo.p;
+			hInfo.front = true;
 			status = true;
 		}
 	}
 	else if (hitSide == HIT_BACK) {
-		if (hInfo.z > x1 && x1 < 0 && x1 < -BIAS)
+		if (x1 > x2 && hInfo.z > x1 && x1 > BIAS)
 		{
 			hInfo.z = x1;
 			hInfo.p = ray.p + x1 * ray.dir;
+			hInfo.front = false;
 			status = true;
 		}
-		if (hInfo.z > x2 && x2 < -BIAS)
+		else if (x2 > x1 && hInfo.z > x2 && x2 > BIAS)
 		{
 			hInfo.z = x2;
 			hInfo.p = ray.p + x2 * ray.dir;
+			hInfo.front = false;
 			status = true;
 		}
 	}
 	else if (hitSide == HIT_FRONT_AND_BACK) {
-		if(((x1 < 0 && hInfo.z > -x1 && -x1 > BIAS) || (x1 > 0 && hInfo.z > x1 && x1 > BIAS)))
+		if (hInfo.z > x1 && x1 > BIAS)
 		{
-			if (x1 < 0)
-				x1 = -x1;
 			hInfo.z = x1;
 			hInfo.p = ray.p + x1 * ray.dir;
+			hInfo.N = -hInfo.p;
+			if (x1 < x2)
+				hInfo.front = true;
+			else
+				hInfo.front = false;
 			status = true;
 		}
-		if (((x2 < 0 && hInfo.z > -x2 && -x2 > BIAS) || (x2 > 0 && hInfo.z > x2 && x2 > BIAS)))
+		if (hInfo.z > x2 && x2 > BIAS)
 		{
-			if (x2 < 0)
-				x2 = -x2;
 			hInfo.z = x2;
 			hInfo.p = ray.p + x2 * ray.dir;
+			hInfo.N = -hInfo.p;
+			if (x2 < x1)
+				hInfo.front = true;
+			else
+				hInfo.front = false;
 			status = true;
 		}
 	}
