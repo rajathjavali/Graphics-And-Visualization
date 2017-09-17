@@ -51,15 +51,18 @@ Color MtlBlinn::Shade(const Ray &ray, const HitInfo &hInfo, const LightList &lig
 	if (bounceCount == 0)
 		return black;
 
+	if (!hInfo.front && refraction == Color(0, 0, 0))
+		return black;
+
 	Color color(0, 0, 0),
 		absorptionCoeff(1, 1, 1),
 		reflectedColor(0, 0, 0),
 		refractedColor(0, 0, 0),
 		totalReflection = reflection;
-	
+
 	Point3 Hi, surfaceNormal = hInfo.N.GetNormalized();
 	Point3 viewDir = ray.dir.GetNormalized();
-	
+
 	float cosi, sini, sint, cost;
 
 	for (int i = 0; i < lights.size(); i++)
@@ -73,158 +76,88 @@ Color MtlBlinn::Shade(const Ray &ray, const HitInfo &hInfo, const LightList &lig
 		}
 
 		Point3 lDir = li->Direction(hInfo.p).GetNormalized();
-		
+
 
 		Hi = (lDir + viewDir).GetNormalized(); // half vector		
 		color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse + specular *  pow(fmax(0, surfaceNormal.Dot(Hi)), glossiness));
-		
-		//if (refraction != Color(0, 0, 0))
-		//{
-		//	if (!hInfo.front)
-		//	{
-		//		if (refraction == Color(0, 0, 0))
-		//			return black;
+	}
+	if (refraction != Color(0, 0, 0))
+	{
+		cosi = surfaceNormal.Dot(viewDir);
+		sini = sqrt(1 - fmin(pow(cosi, 2), 1));
 
-		//		HitInfo temp;
-		//		temp.z = BIGFLOAT;
-		//		sinTheta2 = ior * sinTheta1;
-		//		//ray inside the object and getting a total internal reflection
-		//		if (sinTheta2 > 1)
-		//		{
-		//			Point3 rayDir = (-1 * (2 * surfaceNormal * (surfaceNormal.Dot(viewDir)) - viewDir)).GetNormalized();
-		//			Ray totalReflectedRay(hInfo.p, rayDir);
-		//			if (traceNode(&rootNode, totalReflectedRay, temp, HIT_FRONT_AND_BACK))
-		//			{
-		//				float dist = sqrt((hInfo.p - temp.p).Length());
-		//				absorptionCoeff.r = exp(-temp.z * absorption.r);
-		//				absorptionCoeff.g = exp(-temp.z * absorption.g);
-		//				absorptionCoeff.b = exp(-temp.z * absorption.b);
-		//				return absorptionCoeff * temp.node->GetMaterial()->Shade(totalReflectedRay, temp, lights, (bounceCount - 1));
-		//			}
-		//		}
-		//		//normal refraction i.e the ray is going out of the object
-		//		else {
-		//			cosTheta2 = sqrt(1 - fmin(pow(sinTheta2, 2), 1));
-		//			Point3 S = (surfaceNormal.Cross(surfaceNormal.Cross(viewDir))).GetNormalized();
-		//			Point3 refractedDir = (-1 * surfaceNormal * (surfaceNormal * cosTheta2) + S * sinTheta2).GetNormalized();
-		//			Ray refractedRay(hInfo.p, refractedDir);
-
-		//			if (traceNode(&rootNode, refractedRay, temp, HIT_FRONT_AND_BACK))
-		//				if(hInfo.front)
-		//					refractedColor += temp.node->GetMaterial()->Shade(refractedRay, temp, lights, (bounceCount - 1));
-		//		}
-		//	}
-		//	if(hInfo.front) {
-		//		float reflectedPortion = 0;
-		//		float R0 = pow((1 - ior), 2) / pow((1 + ior), 2);
-		//		reflectedPortion = R0 + (1 - R0) * pow((1 - cosTheta1), 5);
-		//		//fresnel(viewDir, surfaceNormal, ior, reflectedPortionFresnel);
-		//		float refractedPortion = 1 - reflectedPortion;
-		//		totalReflection += reflectedPortion * refraction;
-
-		//		HitInfo temp;
-		//		temp.z = BIGFLOAT;
-
-		//		sinTheta2 = sinTheta1 / ior;
-
-		//		cosTheta2 = sqrt(1 - fmin(pow(sinTheta2, 2), 1));
-		//		Point3 S = (surfaceNormal.Cross(surfaceNormal.Cross(viewDir))).GetNormalized();
-		//		Point3 refractedDir = (-1 * surfaceNormal * cosTheta2 + S * sinTheta2).GetNormalized();
-		//		Ray refractedRay(hInfo.p, refractedDir);
-
-		//		if (traceNode(&rootNode, refractedRay, temp, HIT_FRONT_AND_BACK)) {
-		//			absorptionCoeff.r = exp(-temp.z * absorption.r);
-		//			absorptionCoeff.g = exp(-temp.z * absorption.g);
-		//			absorptionCoeff.b = exp(-temp.z * absorption.b);
-		//			refractedColor += absorptionCoeff * refractedPortion
-		//				* temp.node->GetMaterial()->Shade(refractedRay, temp, lights, (bounceCount - 1));
-
-		//		}
-		//	}
-
-		//}
-
-		if (refraction != Color(0, 0, 0))
-		{
-			cosi = fabs(surfaceNormal.Dot(ray.dir));
-			sini = sqrt(1 - fmin(pow(cosi, 2), 1));
-
-			//ray from air to denser medium
-			if (hInfo.front)
-				sint = (float) sini / ior;
-
-			//ray from denser medium to air
-			else
-				sint = sini * ior;
-
-			HitInfo temp;
-			temp.z = BIGFLOAT;
-			//ray inside the object and getting a total internal reflection
+		HitInfo temp;
+		temp.z = BIGFLOAT;
+		//ray inside the object and getting a total internal reflection
+		if (!hInfo.front) {
+			sint = (float)sini * ior;
 			if (sint > 1)
 			{
 				Point3 rayDir = (-2 * surfaceNormal * (surfaceNormal.Dot(viewDir)) + viewDir).GetNormalized();
 				Ray totalReflectedRay(hInfo.p, rayDir);
 				if (traceNode(&rootNode, totalReflectedRay, temp, HIT_FRONT_AND_BACK))
 				{
-					if (!hInfo.front) {
-						absorptionCoeff.r = exp(-temp.z * absorption.r);
-						absorptionCoeff.g = exp(-temp.z * absorption.g);
-						absorptionCoeff.b = exp(-temp.z * absorption.b);
-						reflectedColor += absorptionCoeff * temp.node->GetMaterial()->Shade(totalReflectedRay, temp, lights, (bounceCount - 1));
-					}
-					else
-						reflectedColor += temp.node->GetMaterial()->Shade(totalReflectedRay, temp, lights, (bounceCount - 1));
+					absorptionCoeff.r = exp(-hInfo.z * absorption.r);
+					absorptionCoeff.g = exp(-hInfo.z * absorption.g);
+					absorptionCoeff.b = exp(-hInfo.z * absorption.b);
+					refractedColor += absorptionCoeff * temp.node->GetMaterial()->Shade(totalReflectedRay, temp, lights, (bounceCount - 1));
 				}
-
 			}
 			else
 			{
-				float reflectedPortion = 0;
-				float R0 = (float)(pow((1 - ior), 2)) / pow((1 + ior), 2);
-				reflectedPortion = R0 + (1 - R0) * pow((1 - cosi), 5); 
-				
-				float refractedPortion = 1 - reflectedPortion;
-				totalReflection += reflectedPortion * refraction;
-
-				HitInfo temp;
-				temp.z = BIGFLOAT;
-
 				cost = sqrt(1 - fmin(pow(sint, 2), 1));
-				Point3 S = (surfaceNormal.Cross(surfaceNormal.Cross(viewDir))).GetNormalized();
-				Point3 refractedDir = (-1 * surfaceNormal * cost + S * sint).GetNormalized();
-				
+				Point3 S = (surfaceNormal.Cross(surfaceNormal.Cross(-viewDir))).GetNormalized();
+				Point3 refractedDir = (-surfaceNormal * cost + S * sint).GetNormalized();
+
 				Ray refractedRay(hInfo.p, refractedDir);
 
 				if (traceNode(&rootNode, refractedRay, temp, HIT_FRONT_AND_BACK))
 				{
-					if(!hInfo.front)
-					{ 
-						absorptionCoeff.r = exp(-temp.z * absorption.r);
-						absorptionCoeff.g = exp(-temp.z * absorption.g);
-						absorptionCoeff.b = exp(-temp.z * absorption.b);
-						refractedColor += absorptionCoeff * refractedPortion * temp.node->GetMaterial()->Shade(refractedRay, temp, lights, bounceCount);
-					}
-					else
-						refractedColor += temp.node->GetMaterial()->Shade(refractedRay, temp, lights, bounceCount);
+					if (temp.front)
+						refractedColor += temp.node->GetMaterial()->Shade(refractedRay, temp, lights, (bounceCount -1));
 				}
-				
 			}
-			color += refractedColor;
 		}
-
-		if (totalReflection != Color(0, 0, 0))
+		else
 		{
-			Point3 rayDir = -2 * surfaceNormal * (surfaceNormal.Dot(viewDir)) + viewDir;
-			rayDir.Normalize();
-			Ray reflectedRay(hInfo.p, rayDir);
-			HitInfo temp;
-			temp.z = BIGFLOAT;
+			sint = (float)sini / ior;
 
-			if (traceNode(&rootNode, reflectedRay, temp, HIT_FRONT_AND_BACK))
-				reflectedColor += temp.node->GetMaterial()->Shade(reflectedRay, temp, lights, (bounceCount - 1));
-			color += totalReflection * reflectedColor;
+			float R0 = (float)(pow((1 - ior), 2)) / pow((1 + ior), 2);
+			float reflectedPortion = R0 + (1 - R0) * pow((1 - cosi), 5);
+			float refractedPortion = 1 - reflectedPortion;
+			totalReflection += reflectedPortion * refraction;
+
+			cost = sqrt(1 - fmin(pow(sint, 2), 1));
+			Point3 S = (surfaceNormal.Cross(surfaceNormal.Cross(viewDir))).GetNormalized();
+			Point3 refractedDir = (-1 * surfaceNormal * cost + S * sint).GetNormalized();
+			Ray refractedRay(hInfo.p, -refractedDir);
+
+			if (traceNode(&rootNode, refractedRay, temp, HIT_FRONT_AND_BACK))
+			{
+				if(!temp.front)
+				{
+					absorptionCoeff.r = exp(-temp.z * absorption.r);
+					absorptionCoeff.g = exp(-temp.z * absorption.g);
+					absorptionCoeff.b = exp(-temp.z * absorption.b);
+					refractedColor += absorptionCoeff * refractedPortion * temp.node->GetMaterial()->Shade(refractedRay, temp, lights, (bounceCount-1));
+				}
+			}
+
 		}
+		color += refraction * refractedColor;
+	}
 
+	if (totalReflection != Color(0, 0, 0))
+	{
+		Point3 rayDir = -2 * surfaceNormal * (surfaceNormal.Dot(viewDir)) + viewDir;
+		rayDir.Normalize();
+		Ray reflectedRay(hInfo.p, rayDir);
+		HitInfo temp;
+		temp.z = BIGFLOAT;
+
+		if (traceNode(&rootNode, reflectedRay, temp, HIT_FRONT_AND_BACK))
+			if (hInfo.front)
+				color += totalReflection * temp.node->GetMaterial()->Shade(reflectedRay, temp, lights, (bounceCount - 1));
 	}
 	color.ClampMinMax();
 	return color;
@@ -248,9 +181,53 @@ float GenLight::Shadow(Ray ray, float t_max)
 int main()
 {
 	LoadScene(RESOURCE_NAME);
+
+	std::thread *th = new std::thread(ShowViewport);
+
+	/*u = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
+	v = camera.dir ^ u; // v vector in -y direction
+	int imgSize = renderImage.GetWidth() * renderImage.GetHeight();
+	pixelArray = renderImage.GetPixels();
+
+	float heightOfImgPlane = 2 * tan((camera.fov / 2) * PI / 180.0f) * CAM_TO_IMG_DIST;
+	float pixelSize = heightOfImgPlane / camera.imgHeight;
+	distanceBuffer = renderImage.GetZBuffer();
+
+	// setting the magnitude of the vectors equivalent to pixel size	
+	u = u * pixelSize;
+	v = v * pixelSize;
+
+	startingPoint = camera.pos + camera.dir * CAM_TO_IMG_DIST
+		- v * (camera.imgHeight / 2) // since vector v is in -y direction and we need to go in +y direction to get to the top corner
+		- u * (camera.imgWidth / 2); // since vector u is in +x direction and we need to go in -x direction to get to the top corner
+
+	clock_t startTime = clock();
 	
-	//std::thread *th = new std::thread(ShowViewport);
+	for (int j = 0; j < camera.imgHeight; j++)
+		for (int i = 0; i < camera.imgWidth; i++)
+			Trace(i, j);
+
+	clock_t endTime = clock();
+
+	double timeElapsed = static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC;
+	printf("\nRender time is %f seconds\n", timeElapsed);
+
 	
+	renderImage.SaveImage(IMG_NAME);
+	renderImage.ComputeZBufferImage();
+	renderImage.SaveZImage(Z_IMG_NAME);
+	*/
+	printf("Enter a key to exit\n");
+	while (getchar())
+	{
+		break;
+	}
+
+	return 1;
+}
+
+void BeginRender()
+{
 	u = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
 	v = camera.dir ^ u; // v vector in -y direction
 	int imgSize = renderImage.GetWidth() * renderImage.GetHeight();
@@ -282,55 +259,6 @@ int main()
 	renderImage.SaveImage(IMG_NAME);
 	renderImage.ComputeZBufferImage();
 	renderImage.SaveZImage(Z_IMG_NAME);
-
-	printf("Enter a key to exit\n");
-	while (getchar())
-	{
-		break;
-	}
-
-	return 1;
-}
-
-void BeginRender()
-{
-	u = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
-	v = camera.dir ^ u; // v vector in -y direction
-	int imgSize = renderImage.GetWidth() * renderImage.GetHeight();
-	pixelArray = renderImage.GetPixels();
-
-	float heightOfImgPlane = 2 * tan((camera.fov / 2) * PI / 180.0f) * CAM_TO_IMG_DIST;
-	float pixelSize = heightOfImgPlane / camera.imgHeight;
-	distanceBuffer = renderImage.GetZBuffer();
-
-	// setting the magnitude of the vectors equivalent to pixel size	
-	u = u * pixelSize;
-	v = v * pixelSize;
-
-	startingPoint = camera.pos + camera.dir * CAM_TO_IMG_DIST
-		- v * (camera.imgHeight / 2) // since vector v is in -y direction and we need to go in +y direction to get to the top corner
-		- u * (camera.imgWidth / 2); // since vector u is in +x direction and we need to go in -x direction to get to the top corner
-
-	/*clock_t startTime = clock();
-	tbb::parallel_for(0, camera.imgHeight, [&](int j) {
-		for (int i = 0; i < camera.imgWidth; i++) {
-			Trace(i, j);
-		}
-	});
-	clock_t endTime = clock();
-
-	double timeElapsed = static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC;
-	printf("\nRender time is %f seconds\n", timeElapsed);*/
-
-	for (int j = 0; j< camera.imgHeight; j++)
-		for (int i = 0; i < camera.imgWidth; i++)
-			Trace(i, j);
-
-	renderImage.SaveImage(IMG_NAME);
-	renderImage.ComputeZBufferImage();
-	renderImage.SaveZImage(Z_IMG_NAME);
-	
-
 }
 
 void Trace(int i, int j) {
@@ -348,7 +276,7 @@ void Trace(int i, int j) {
 	if (traceNode(&rootNode, ray, hit_info, HIT_FRONT))
 	{
 		distanceBuffer[pixelIndexInImg] = hit_info.z;
-		pixelColour = hit_info.node->GetMaterial()->Shade(ray, hit_info, lights, 5);
+		pixelColour = hit_info.node->GetMaterial()->Shade(ray, hit_info, lights, 7);
 		pixelArray[pixelIndexInImg].r = pixelColour.r * 255;
 		pixelArray[pixelIndexInImg].b = pixelColour.b * 255;
 		pixelArray[pixelIndexInImg].g = pixelColour.g * 255;
