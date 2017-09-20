@@ -46,5 +46,7 @@ function chooseData() {
     // ******* TODO: PART I *******
     // Changed the selected data when a user selects a different
     // menu item from the drop down.
-
+    barChart.chooseData();
+	
+	//updateBarChart(dataValue);
 }

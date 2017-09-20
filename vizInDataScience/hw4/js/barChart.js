@@ -23,50 +23,116 @@ class BarChart {
 		}
 		return max;
 	}
+	
+	findMin(max, d)
+	{
+		let min = max;
+		for(let iter of this.allData)
+		{
+
+			if(iter[d] < min)
+				min = iter[d];
+		}
+		return min;
+	}
     /**
      * Render and update the bar chart based on the selection of the data type in the drop-down box
      */
+	 
+	update(){
+		
+	}
     updateBarChart(selectedDimension) {
 
 
         // ******* TODO: PART I *******
 
-		console.log(this.allData[1][selectedDimension]);
-        // Create the x and y scales; make
-		//let aScale = d3.scaleLinear()
-		//	.domain([0, d3.max(data, d => d.a)])
-		//	.range([0, 150]);
+		let svg = d3.select("#barChart");
+		let length = this.allData.length;
+		let height = svg.attr("height");
+		let width = svg.attr("width");
+		let padding = 50;
 		
 		let maxOfData = this.findMax(selectedDimension);
+		let maxYear = this.findMax("year");
+		let minYear = this.findMin(maxYear, "year");
+		let years = [], selectionData = [], i = 0;
+		for(let iter of this.allData)
+		{
+			years[i++] = iter.year;
+		}
+		years.sort();
+		i = 0;
+		for(let iter of this.allData)
+		{
+			selectionData[i++] = iter[selectedDimension];
+		}
+		selectionData.sort(d3.descending);
+		
+		console.log(selectionData);
+		
 		let xScale = d3.scaleLinear()
-			.domain([0, (this.allData).length])
-			.range([20, 400]);
+			.domain([0, length-1])
+			.range([width-70, 5]);
 			
 		let yScale = d3.scaleLinear()
-			.domain([0, d3.max(maxOfData, d => d)])
-			.range([20, 400]);
-			
+			.domain([0, maxOfData])
+			.range([0, 400]);
+		
+		let xAxisScale = d3.scaleBand()
+			.domain(years)
+			.range([3, width - padding]);
+		
+		let yAxisScale = d3.scaleLinear()
+			.domain([maxOfData, 0])
+			.range([0, height - padding]);
+		
         // sure to leave room for the axes
-
         // Create colorScale
 
+		
+		
         // Create the axes (hint: use #xAxis and #yAxis)
-
+		let xAxisSvg = d3.select("#xAxis");
+		let xAxis = d3.axisBottom().scale(xAxisScale);
+		xAxisSvg.attr("transform", "translate("+ padding +","+ (height - padding) + ")").call(xAxis)
+		.selectAll("text")	
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", "-.2em")
+        .attr("transform", "rotate(-90)");;
+		 
+		let yAxisSvg = d3.select("#yAxis");
+		let yAxis = d3.axisLeft().scale(yAxisScale);
+		yAxisSvg.attr("transform", "translate( "+ padding +", 0)").call(yAxis)
+		.selectAll("text")
+		.style("text-anchor", "end")
+        .attr("dx", "0.2em")
+        .attr("dy", "0.25em");
+		
+		
         // Create the bars (hint: use #bars)
 		let barGraph = d3.select("#bars");
-		let bars = barGraph.select("rect").data(this.allData);
+		let bars = barGraph.selectAll("rect").data(this.allData);
 		
-		bars.enter().append("rect")
+		let newBars = bars.enter().append("rect");
+		
+		newBars.on("click", function(d){})
 			.attr("x", (d, i) => xScale(i))
 			.attr("y", 0)
-			.attr("width", 10)
-			.attr("height", d => yScale(d[selectedDimension]))
+			.attr("width", 20)
+			.attr("height", 0)
+			.attr("transform", "translate("+ padding +","+ (height - padding) + ") scale(1, -1)")
 			.style("fill", "steelblue")
 			.attr("opacity", 1);
-		//.transition()
-		//.duration(3000)
-		//.attr("height", d => yScale(d[selectedDimension]))
-		//.d => colorScale(getData(d, selectedDimension)));
+		
+		
+		bars = bars.merge(newBars);
+
+		bars
+			.transition()
+			.duration(1000)
+			.attr("height", d => yScale(d[selectedDimension]));
 		
 		
         // ******* TODO: PART II *******
@@ -90,6 +156,7 @@ class BarChart {
         // ******* TODO: PART I *******
         //Changed the selected data when a user selects a different
         // menu item from the drop down.
-
+		let dataValue = document.getElementById('dataset').value;
+		this.updateBarChart(dataValue);
     }
 }
