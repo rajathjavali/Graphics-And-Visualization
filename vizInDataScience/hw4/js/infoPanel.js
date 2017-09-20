@@ -21,7 +21,29 @@ class InfoPanel {
         // Hint: Select the appropriate ids to update the text content.
 
         //Set Labels
+		let title = d3.select("#edition");
+		title.text(oneWorldCup.EDITION);
+		
+		let host = d3.select("#host");
+		host.text(oneWorldCup.host);
+		
+		let winner = d3.select("#winner");
+		winner.text(oneWorldCup.winner);
 
-    }
+		let silver = d3.select("#silver");
+		silver.text(oneWorldCup.runner_up);
+		
+		console.log(oneWorldCup.teams_names);
+		
+		let teams = d3.select("#teams").selectAll("li");
+
+		let newEle = teams.data(oneWorldCup.teams_names).enter()
+			.append("li")
+			.text(function(d){return d;});
+			
+		newEle.exit().remove();
+		
+		teams = teams.merge(newEle);			
+	}
 
 }

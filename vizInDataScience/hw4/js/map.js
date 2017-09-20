@@ -71,6 +71,23 @@ class Map {
         // Make sure and give your paths the appropriate class (see the .css selectors at
         // the top of the provided html file)
 
+        
+        // Load in GeoJSON data
+	
+		// Bind data and create one path per GeoJSON feature
+		let path = d3.geoPath()
+            .projection(this.projection);
+			
+		let map = d3.select("#map").selectAll("path")
+			.data(topojson.feature(world, world.objects.countries).features)
+			.enter()
+			.append("path")
+			.attr("d", path)
+			.attr("class", "countries");
+
+		let graticule = d3.geoGraticule();
+		map.append('path').datum(graticule).attr('class', "grat").attr('d', path).attr('fill', 'none');
+    
     }
 
 

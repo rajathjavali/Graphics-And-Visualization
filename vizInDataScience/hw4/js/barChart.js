@@ -39,8 +39,11 @@ class BarChart {
      * Render and update the bar chart based on the selection of the data type in the drop-down box
      */
 	 
-	update(){
+	update(data){
 		
+		//let infoPanel = new InfoPanel();
+		//let worldMap = new Map();
+		//infoPanel.updateInfo(data);
 	}
     updateBarChart(selectedDimension) {
 
@@ -54,8 +57,7 @@ class BarChart {
 		let padding = 50;
 		
 		let maxOfData = this.findMax(selectedDimension);
-		let maxYear = this.findMax("year");
-		let minYear = this.findMin(maxYear, "year");
+		let minOfData = this.findMin(maxOfData, selectedDimension);
 		let years = [], selectionData = [], i = 0;
 		for(let iter of this.allData)
 		{
@@ -69,15 +71,13 @@ class BarChart {
 		}
 		selectionData.sort(d3.descending);
 		
-		console.log(selectionData);
-		
 		let xScale = d3.scaleLinear()
 			.domain([0, length-1])
 			.range([width-70, 5]);
 			
 		let yScale = d3.scaleLinear()
 			.domain([0, maxOfData])
-			.range([0, 400]);
+			.range([0, height - padding]);
 		
 		let xAxisScale = d3.scaleBand()
 			.domain(years)
@@ -89,7 +89,9 @@ class BarChart {
 		
         // sure to leave room for the axes
         // Create colorScale
-
+		let colorScale = d3.scaleLinear()
+            .domain([minOfData, maxOfData])
+            .range(["steelblue", "DarkBlue"]);//"#000080"]);//navy
 		
 		
         // Create the axes (hint: use #xAxis and #yAxis)
@@ -104,7 +106,10 @@ class BarChart {
 		 
 		let yAxisSvg = d3.select("#yAxis");
 		let yAxis = d3.axisLeft().scale(yAxisScale);
-		yAxisSvg.attr("transform", "translate( "+ padding +", 0)").call(yAxis)
+		yAxisSvg.attr("transform", "translate( "+ padding +", 0)")
+		.transition()
+		.duration(2000)
+		.call(yAxis)
 		.selectAll("text")
 		.style("text-anchor", "end")
         .attr("dx", "0.2em")
@@ -117,13 +122,19 @@ class BarChart {
 		
 		let newBars = bars.enter().append("rect");
 		
-		newBars.on("click", function(d){})
+		newBars
+			.on("click", function(d){
+			new InfoPanel().updateInfo(d);})
+			.on("mouseover", function(){d3.select(this).style("fill", "red");})
+			.on("mouseout",function(d){d3.select(this).style("fill", colorScale(d[selectedDimension]));})
 			.attr("x", (d, i) => xScale(i))
 			.attr("y", 0)
 			.attr("width", 20)
 			.attr("height", 0)
 			.attr("transform", "translate("+ padding +","+ (height - padding) + ") scale(1, -1)")
-			.style("fill", "steelblue")
+			.style("fill", function (d) {
+                return colorScale(d[selectedDimension]);
+            })
 			.attr("opacity", 1);
 		
 		
@@ -131,7 +142,7 @@ class BarChart {
 
 		bars
 			.transition()
-			.duration(1000)
+			.duration(2000)
 			.attr("height", d => yScale(d[selectedDimension]));
 		
 		

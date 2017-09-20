@@ -40,7 +40,7 @@
 
 /*Map grid style*/
 .grat {
-    stroke: grey;
+    stroke: black;
     stroke-width: 1px;
     opacity: .2;
 }
