@@ -33,17 +33,24 @@ class InfoPanel {
 		let silver = d3.select("#silver");
 		silver.text(oneWorldCup.runner_up);
 		
-		console.log(oneWorldCup.teams_names);
+		//console.log(oneWorldCup.teams_names);
 		
-		let teams = d3.select("#teams").selectAll("li");
+		let teams = d3.select("#teams").selectAll("li").data(oneWorldCup.teams_names);
 
-		let newEle = teams.data(oneWorldCup.teams_names).enter()
+		let newEle = teams.enter()
 			.append("li")
 			.text(function(d){return d;});
-			
-		newEle.exit().remove();
-		
-		teams = teams.merge(newEle);			
-	}
 
+		teams.exit().remove();
+
+		teams = newEle.merge(teams);	
+		teams.transition()
+				 .duration(2000)
+				 .text(d => d); 
+		
+	}
+	updateMapData(data)
+	{
+		
+	}
 }

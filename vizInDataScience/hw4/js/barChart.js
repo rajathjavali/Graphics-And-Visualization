@@ -39,17 +39,12 @@ class BarChart {
      * Render and update the bar chart based on the selection of the data type in the drop-down box
      */
 	 
-	update(data){
-		
-		//let infoPanel = new InfoPanel();
-		//let worldMap = new Map();
-		//infoPanel.updateInfo(data);
-	}
     updateBarChart(selectedDimension) {
 
 
         // ******* TODO: PART I *******
-
+		let worldMap = this.worldMap;
+		let infPane = this.infoPanel;
 		let svg = d3.select("#barChart");
 		let length = this.allData.length;
 		let height = svg.attr("height");
@@ -115,6 +110,11 @@ class BarChart {
         .attr("dx", "0.2em")
         .attr("dy", "0.25em");
 		
+		let deselect = function(){
+			d3.select("#bars").selectAll("rect").style("fill", function (d) {
+                return colorScale(d[selectedDimension]);
+            });
+		}
 		
         // Create the bars (hint: use #bars)
 		let barGraph = d3.select("#bars");
@@ -122,11 +122,15 @@ class BarChart {
 		
 		let newBars = bars.enter().append("rect");
 		
+		
+		
 		newBars
 			.on("click", function(d){
-			new InfoPanel().updateInfo(d);})
-			.on("mouseover", function(){d3.select(this).style("fill", "red");})
-			.on("mouseout",function(d){d3.select(this).style("fill", colorScale(d[selectedDimension]));})
+				deselect();
+				d3.select(this).style("fill", "red");
+				infPane.updateInfo(d);
+				worldMap.updateMap(d);
+			})
 			.attr("x", (d, i) => xScale(i))
 			.attr("y", 0)
 			.attr("width", 20)
@@ -146,6 +150,7 @@ class BarChart {
 			.attr("height", d => yScale(d[selectedDimension]));
 		
 		
+		
         // ******* TODO: PART II *******
 
         // Implement how the bars respond to click events
@@ -154,7 +159,7 @@ class BarChart {
 
         // Call the necessary update functions for when a user clicks on a bar.
         // Note: think about what you want to update when a different bar is selected.
-
+		
     }
 
     /**
