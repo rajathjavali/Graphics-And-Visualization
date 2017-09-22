@@ -1,6 +1,6 @@
 /*
 *  Sphere.cpp
-*  Created on: Aug 25, 2017
+*  Created on: Sept 21, 2017
 *      Author: RajathJavali
 */
 
@@ -8,6 +8,7 @@
 
 #define BIAS 0.001
 
+Plane thePlane;
 Sphere theSphere;
 
 /* Equation for intersection: d*d x^2 + 2*(ray-centerOfObj)*d x + (ray-centerOfObj) * (ray-centerOfObj) - radius^2 = 0
@@ -22,14 +23,14 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 	//not required since we are tracing in model space where the obj is of unit size.
 	// checking if all the magnitude across the diagonal is the same 
 	/*if ((hInfo.node->GetTransform().GetRow(0).x == hInfo.node->GetTransform().GetRow(1).y) &&
-		(hInfo.node->GetTransform().GetRow(1).y == hInfo.node->GetTransform().GetRow(2).z)) 
-		radius = hInfo.node->GetTransform().GetRow(0).x;*/
+	(hInfo.node->GetTransform().GetRow(1).y == hInfo.node->GetTransform().GetRow(2).z))
+	radius = hInfo.node->GetTransform().GetRow(0).x;*/
 
 	rayToObj = ray.p;
 	a = ray.dir.Dot(ray.dir);
 	b = 2 * rayToObj.Dot(ray.dir);
 	c = rayToObj.Dot(rayToObj) - 1.0;
-	
+
 	delta = b * b - 4 * a * c;
 	if (delta < 0)
 		return false;
@@ -43,7 +44,7 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 
 	// smallest val is always the front hit
 	if (hitSide == HIT_FRONT) {
-		if(x1 > BIAS && x1 < x2 && hInfo.z > x1)
+		if (x1 > BIAS && x1 < x2 && hInfo.z > x1)
 		{
 			hInfo.z = x1;
 			hInfo.p = ray.p + x1 * ray.dir;
@@ -51,7 +52,7 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 			hInfo.front = true;
 			status = true;
 		}
-		else if(x2 < x1 && hInfo.z > x2 && x2 > BIAS)
+		else if (x2 < x1 && hInfo.z > x2 && x2 > BIAS)
 		{
 			hInfo.z = x2;
 			hInfo.p = ray.p + x2 * ray.dir;
@@ -103,4 +104,20 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 
 	return status;
 
+}
+
+bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
+	return true;
+}
+
+bool Box::IntersectRay(const Ray &r, float t_max) const {
+	return false;
+}
+
+bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
+	return false;
+}
+
+bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsigned int faceID) const {
+	return false;
 }

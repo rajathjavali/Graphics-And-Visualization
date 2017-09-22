@@ -19,7 +19,7 @@ d3.csv("data/fifa-world-cup.csv", function (error, allData) {
     });
 
     /* Create infoPanel, barChart and Map objects  */
-    let infoPanel = new InfoPanel();
+    window.infoPanel = new InfoPanel();
     let worldMap = new Map();
 
     /* DATA LOADING */

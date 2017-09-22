@@ -2,8 +2,8 @@
 ///
 /// \file       xmlload.cpp 
 /// \author     Cem Yuksel (www.cemyuksel.com)
-/// \version    2.1
-/// \date       September 4, 2015
+/// \version    5.0
+/// \date       September 24, 2015
 ///
 /// \brief Example source for CS 6620 - University of Utah.
 ///
@@ -22,6 +22,7 @@ extern Camera camera;
 extern RenderImage renderImage;
 extern MaterialList materials;
 extern LightList lights;
+extern ObjFileList objList;
 
 //-------------------------------------------------------------------------------
 
@@ -86,11 +87,13 @@ int LoadScene(const char *filename)
 	}
 
 	nodeMtlList.clear();
-
 	rootNode.Init();
 	materials.DeleteAll();
 	lights.DeleteAll();
+	objList.Clear();
 	LoadScene(scene);
+
+	rootNode.ComputeChildBoundBox();
 
 	// Assign materials
 	int numNodes = nodeMtlList.size();
@@ -176,6 +179,26 @@ void LoadNode(Node *parent, TiXmlElement *element, int level)
 		if (COMPARE(type, "sphere")) {
 			node->SetNodeObj(&theSphere);
 			printf(" - Sphere");
+		}
+		else if (COMPARE(type, "plane")) {
+			node->SetNodeObj(&thePlane);
+			printf(" - Plane");
+		}
+		else if (COMPARE(type, "obj")) {
+			printf(" - OBJ");
+			Object *obj = objList.Find(name);
+			if (obj == NULL) {    // object is not on the list, so we should load it now
+				TriObj *tobj = new TriObj;
+				if (!tobj->Load(name)) {
+					printf(" -- ERROR: Cannot load file \"%s.\"", name);
+					delete tobj;
+				}
+				else {
+					objList.Append(tobj, name);  // add to the list
+					obj = tobj;
+				}
+			}
+			node->SetNodeObj(obj);
 		}
 		else {
 			printf(" - UNKNOWN TYPE");

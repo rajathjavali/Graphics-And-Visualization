@@ -112,29 +112,9 @@ class Map {
 		// Bind data and create one path per GeoJSON feature
 		
 		let barChart =  window.barChart;
-		let infoPane = this.infoPanel;
-		let participated = []; //0 - hosted, 1- winner, 2 -runnerup 3-participated
-		let update = function(id)
-		{
-			for(let i of barChart.allData)
-			{					
-				let k = 0;
-				let name = "";
-				for(let j of i.teams_iso)
-				{
-
-					if(id == j)
-					{
-						participated[i.year] = 3;
-						if(id == i.host_country_code)
-							participated[i.year] = 0;
-						break;
-					}
-					k++;
-				}
-			}
-			console.log(participated);
-		}
+		let infoPane = window.infoPanel;
+		
+		
 		
 		let path = d3.geoPath()
             .projection(this.projection);
@@ -146,12 +126,13 @@ class Map {
 			.attr("d", path)
 			.attr("id", d => d.id)
 			.classed("countries", true)
-			.on("click", function(d) { update(d.id);});
+			.on("click", function(d) { 
+				infoPane.updateMapData(d.id, barChart.allData);
+			});
 
 		let graticule = d3.geoGraticule();
 		d3.select("#map").append('path').datum(graticule).attr('class', "grat").attr('d', path).attr('fill', 'none');
     
     }
-
 
 }

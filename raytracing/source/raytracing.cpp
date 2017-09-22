@@ -30,6 +30,8 @@ Camera camera;
 RenderImage renderImage;
 MaterialList materials;
 LightList lights;
+ObjFileList objList;
+
 Point3 u, v, startingPoint;
 float *distanceBuffer;
 Color24 *pixelArray;
