@@ -49,24 +49,9 @@ class InfoPanel {
 				 .text(d => d); 
 		
 	}
-	updateMapData(name, allData)
+	updateMapData(name, participated, host)
 	{
-		let participated = [], k =0; //0 - hosted, 1-participated
-		participated[0] = "Never Participated";
-		console.log(allData);
-		for(let i of allData)
-		{					
-			for(let j of i.teams_iso)
-			{
-				if(name == j)
-				{
-					participated[k] = i.year;
-					if(name == i.host_country_code)
-						participated[k++] = i.year + " (host)";
-					break;
-				}
-			}
-		}
+
 		console.log(participated);
 		
 		let nameSelected = d3.select("#mapSelect");
@@ -76,14 +61,14 @@ class InfoPanel {
 
 		let newEle = years.enter()
 			.append("li")
-			.text(function(d){return d;});
+			.text(function(d, i){return d + (host[i]?" Host":"");});
 
 		years.exit().remove();
 
 		years = newEle.merge(years);	
 		years.transition()
 				 .duration(1000)
-				 .text(d => d); 
+				 .text(function(d, i){return d + (host[i]?" Host":"");}); 
 	}
 }
 

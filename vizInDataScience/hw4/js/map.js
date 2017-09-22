@@ -20,7 +20,9 @@ class Map {
         // Hint: If you followed our suggestion of using classes to style
         // the colors and markers for hosts/teams/winners, you can use
         // d3 selection and .classed to set these classes on and off here.
-		d3.select("#map").selectAll("path").classed("host", false).classed("team", false).classed("countries", true);
+		d3.select("#map").selectAll(".host").classed("host", false).classed("countries", true);
+		d3.select("#map").selectAll(".team").classed("team", false).classed("countries", true);
+		
 		d3.select("#points").selectAll("circle").remove();
     }
 
@@ -53,7 +55,7 @@ class Map {
 		for(let iter of worldcupData.teams_iso)
 		{
 			team = "#"+iter;
-			map.select(team).attr("class", "team");
+			map.select(team).attr("class", "team")
 		}
 		
 		// Select the host country and change it's color accordingly.
@@ -127,7 +129,25 @@ class Map {
 			.attr("id", d => d.id)
 			.classed("countries", true)
 			.on("click", function(d) { 
-				infoPane.updateMapData(d.id, barChart.allData);
+				let participated = [], host = [], k =0; //0 - hosted, 1-participated
+				participated[0] = "Never Participated";
+				for(let i of barChart.allData)
+				{					
+					for(let j of i.teams_iso)
+					{
+						if(d.id == j)
+						{
+							participated[k] = i.year;
+							host[k] = 0;
+							console.log(i.year);
+							if(d.id == i.host_country_code)
+								host[k] = 1;
+							k++;
+							break;
+						}
+					}
+				}
+				infoPane.updateMapData(d.id, participated, host);
 			});
 
 		let graticule = d3.geoGraticule();
