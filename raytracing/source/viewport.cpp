@@ -401,6 +401,7 @@ void GlutMouse(int button, int state, int x, int y)
 		case GLUT_LEFT_BUTTON:
 			mouseMode = MOUSEMODE_DEBUG;
 			PrintPixelData(x, y);
+			Trace(x, y);
 			break;
 		case GLUT_RIGHT_BUTTON:
 			mouseMode = MOUSEMODE_ROTATE;

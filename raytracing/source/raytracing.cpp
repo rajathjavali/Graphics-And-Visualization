@@ -21,9 +21,9 @@ using namespace tbb;
 
 #define PI 3.1415
 #define CAM_TO_IMG_DIST 1 // later gets changed, distance of img plane from the camera
-#define IMG_NAME "prj4.jpg"
-#define Z_IMG_NAME "prj4_z.jpg"
-#define RESOURCE_NAME "resource\\scene_prj4.xml" //scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml
+#define IMG_NAME "prj5.jpg"
+#define Z_IMG_NAME "prj5_z.jpg"
+#define RESOURCE_NAME "resource\\Cornell_Box_Scene.xml" //scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml
 
 Node rootNode;
 Camera camera;
@@ -81,7 +81,7 @@ Color MtlBlinn::Shade(const Ray &ray, const HitInfo &hInfo, const LightList &lig
 
 
 		Hi = (lDir + viewDir).GetNormalized(); // half vector		
-		color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse + specular *  pow(fmax(0, surfaceNormal.Dot(Hi)), glossiness));
+		color += liIntensity * fmax(0, fabs(surfaceNormal.Dot(lDir))) * (diffuse + specular *  pow(fmax(0, surfaceNormal.Dot(Hi)), glossiness));
 	}
 	if (refraction != Color(0, 0, 0))
 	{

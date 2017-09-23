@@ -106,15 +106,82 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 
 }
 
+//Assuming axis alligned to z. Hit point is givem by p+td = q; in z axis pz + t dz = 0;
 bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
-	return true;
+	float pz, dz, t;
+	Point2 rayPos(ray.p.x, ray.p.y), rayDir(ray.dir.x, ray.dir.y), hitPoint;
+	Point3 hP;
+	pz = ray.p.z;
+	dz = ray.dir.z;
+
+	if (dz == 0)
+		return false;
+
+	t = -(pz / dz);
+	if (t < hInfo.z && t > 0) {
+		hitPoint = rayPos + t * rayDir;
+		hP = ray.p + t * ray.dir;
+		if (fabs(hitPoint.x) < 1 && fabs(hitPoint.y) < 1)
+		{
+			hInfo.z = t;
+			hInfo.N = Point3(0, 0, 1);
+			//hInfo.p = Point3(hitPoint, 0);// ray.p.z);
+			hInfo.p = hP;
+			return true;
+		}
+	}
+	return false;
 }
 
 bool Box::IntersectRay(const Ray &r, float t_max) const {
+	
+	Point3 A, B, C, D, E, F, G, H; // box faces: x0 = ACGE; x1 = BDFH; y0 = ABFE; y1 = CDHG; z0 = ABDC; z1 = EFHG;
+	A = Corner(0);
+	B = Corner(1);
+	C = Corner(2);
+	D = Corner(3);
+	E = Corner(4);
+	F = Corner(5);
+	G = Corner(6);
+	H = Corner(7);
+
+	Point3 x0N, x1N, y0N, y1N, z0N, z1N; // normals to the faces: x = xN; y = yN; z = zN;
+	x0N = ((E - A).Cross((C - A))).GetNormalized();
+	x1N = ((D - B).Cross((F - B))).GetNormalized();
+	y0N = ((E - A).Cross((B - A))).GetNormalized();
+	y1N = ((G - C).Cross((D - C))).GetNormalized();
+	z0N = ((C - A).Cross((B - A))).GetNormalized();
+	z1N = ((F - E).Cross((G - E))).GetNormalized();
+
+	float tx0 = 0, ty0 = 0, tz0 = 0, tx1 = BIGFLOAT, ty1 = BIGFLOAT, tz1 = BIGFLOAT; // hit distances with all the faces
+	// t = -(S - P).N / d.N; N - normal, S - point on the face; d - direction of ray; P - position of ray
+
+	if (r.dir.Dot(x0N) != 0)
+		tx0 = -(A - r.p).Dot(x0N) / r.dir.Dot(x0N);
+	if (r.dir.Dot(x1N) != 0)
+		tx1 = -(B - r.p).Dot(x1N) / r.dir.Dot(x1N);
+	if (r.dir.Dot(y0N) != 0)
+		ty0 = -(A - r.p).Dot(y0N) / r.dir.Dot(y0N);
+	if (r.dir.Dot(y1N) != 0)
+		ty1 = -(C - r.p).Dot(y1N) / r.dir.Dot(y1N);
+	if (r.dir.Dot(z0N) != 0)
+		tz0 = -(A - r.p).Dot(z0N) / r.dir.Dot(z0N);
+	if (r.dir.Dot(z1N) != 0)
+		tz1 = -(E - r.p).Dot(z1N) / r.dir.Dot(z1N);
+
+	float tentry, texit; // hit distances on box on entry and exit; if ( entry < exit ) ray intersects the box;
+
+	tentry = max(max(tx0, ty0), tz0);
+	texit = min(min(tx1, ty1), tz1);
+	if (tentry < texit && tentry < t_max)
+		return true;
+
 	return false;
 }
 
 bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
+	int vertices = NV();
+	int faces = NF();
 	return false;
 }
 
