@@ -108,6 +108,7 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 
 //Assuming axis alligned to z. Hit point is givem by p+td = q; in z axis pz + t dz = 0;
 bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
+	Ray r(ray.p, ray.dir.GetNormalized());
 	float pz, dz, t;
 	Point2 rayPos(ray.p.x, ray.p.y), rayDir(ray.dir.x, ray.dir.y), hitPoint;
 	Point3 hP;
@@ -118,7 +119,7 @@ bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 		return false;
 
 	t = -(pz / dz);
-	if (t < hInfo.z && t > 0) {
+	if (t < hInfo.z && t > BIAS) {
 		hitPoint = rayPos + t * rayDir;
 		hP = ray.p + t * ray.dir;
 		if (fabs(hitPoint.x) < 1 && fabs(hitPoint.y) < 1)
