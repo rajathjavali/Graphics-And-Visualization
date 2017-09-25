@@ -185,8 +185,8 @@ int main()
 	LoadScene(RESOURCE_NAME);
 
 	std::thread *th = new std::thread(ShowViewport);
-
-	/*u = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
+	/*
+	u = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
 	v = camera.dir ^ u; // v vector in -y direction
 	int imgSize = renderImage.GetWidth() * renderImage.GetHeight();
 	pixelArray = renderImage.GetPixels();

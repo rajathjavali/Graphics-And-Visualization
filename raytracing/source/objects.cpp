@@ -108,9 +108,7 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 
 //Assuming axis alligned to z. Hit point is givem by p+td = q; in z axis pz + t dz = 0;
 bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
-	Ray r(ray.p, ray.dir.GetNormalized());
 	float pz, dz, t;
-	Point2 rayPos(ray.p.x, ray.p.y), rayDir(ray.dir.x, ray.dir.y), hitPoint;
 	Point3 hP;
 	pz = ray.p.z;
 	dz = ray.dir.z;
@@ -120,13 +118,11 @@ bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 
 	t = -(pz / dz);
 	if (t < hInfo.z && t > BIAS) {
-		hitPoint = rayPos + t * rayDir;
 		hP = ray.p + t * ray.dir;
-		if (fabs(hitPoint.x) < 1 && fabs(hitPoint.y) < 1)
+		if (fabs(hP.x) < 1 && fabs(hP.y) < 1)
 		{
 			hInfo.z = t;
 			hInfo.N = Point3(0, 0, 1);
-			//hInfo.p = Point3(hitPoint, 0);// ray.p.z);
 			hInfo.p = hP;
 			return true;
 		}
@@ -134,58 +130,132 @@ bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 	return false;
 }
 
+//assume box is axis aligned
+//check if ray is aligned to any of the axis and then do ray plane interaction with the remaining faces.'
 bool Box::IntersectRay(const Ray &r, float t_max) const {
+
+	if (IsEmpty())
+		return false;
+	float ltx, lty, ltz, tmin = BIGFLOAT; // lower bound x y z
+	float utx, uty, utz, tmax = 0; // upper bound x y z
+
+	if (r.dir.x != 0)
+	{
+		if (r.dir.x > 0)
+		{
+			tmin = ltx = (pmin.x - r.p.x) / r.dir.x;
+			tmax = utx = (pmax.x - r.p.x) / r.dir.x;
+		}
+		else
+		{
+			tmax = utx = (pmin.x - r.p.x) / r.dir.x;
+			tmin = ltx = (pmax.x - r.p.x) / r.dir.x;
+		}
+	}
+	if (r.dir.y != 0)
+	{
+		if (r.dir.y > 0)
+		{
+			lty = (pmin.y - r.p.y) / r.dir.y;
+			uty = (pmax.y - r.p.y) / r.dir.y;
+		}
+		else
+		{
+			 uty = (pmin.y - r.p.y) / r.dir.y;
+			 lty = (pmax.y - r.p.y) / r.dir.y;
+		}
+
+		if ((tmin > uty) || (lty > tmax))
+			return false;
+		
+		if (tmin < lty)
+			tmin = lty;
+		
+		if (tmax > uty)
+			tmax = uty;
+	}
+	if (r.dir.z != 0)
+	{
+		if (r.dir.z > 0)
+		{
+			ltz = (pmin.z - r.p.z) / r.dir.z;
+			utz = (pmax.z - r.p.z) / r.dir.z;
+		}
+		else
+		{
+			utz = (pmin.z - r.p.z) / r.dir.z;
+			ltz = (pmax.z - r.p.z) / r.dir.z;
+		}
+		if ((tmin > utz) || (ltz > tmax))
+			return false;
+
+		if (tmin < ltz)
+			tmin = ltz;
+		
+		if (tmax > utz)
+			tmax = utz;
+	}
 	
-	Point3 A, B, C, D, E, F, G, H; // box faces: x0 = ACGE; x1 = BDFH; y0 = ABFE; y1 = CDHG; z0 = ABDC; z1 = EFHG;
-	A = Corner(0);
-	B = Corner(1);
-	C = Corner(2);
-	D = Corner(3);
-	E = Corner(4);
-	F = Corner(5);
-	G = Corner(6);
-	H = Corner(7);
-
-	Point3 x0N, x1N, y0N, y1N, z0N, z1N; // normals to the faces: x = xN; y = yN; z = zN;
-	x0N = ((E - A).Cross((C - A))).GetNormalized();
-	x1N = ((D - B).Cross((F - B))).GetNormalized();
-	y0N = ((E - A).Cross((B - A))).GetNormalized();
-	y1N = ((G - C).Cross((D - C))).GetNormalized();
-	z0N = ((C - A).Cross((B - A))).GetNormalized();
-	z1N = ((F - E).Cross((G - E))).GetNormalized();
-
-	float tx0 = 0, ty0 = 0, tz0 = 0, tx1 = BIGFLOAT, ty1 = BIGFLOAT, tz1 = BIGFLOAT; // hit distances with all the faces
-	// t = -(S - P).N / d.N; N - normal, S - point on the face; d - direction of ray; P - position of ray
-
-	if (r.dir.Dot(x0N) != 0)
-		tx0 = -(A - r.p).Dot(x0N) / r.dir.Dot(x0N);
-	if (r.dir.Dot(x1N) != 0)
-		tx1 = -(B - r.p).Dot(x1N) / r.dir.Dot(x1N);
-	if (r.dir.Dot(y0N) != 0)
-		ty0 = -(A - r.p).Dot(y0N) / r.dir.Dot(y0N);
-	if (r.dir.Dot(y1N) != 0)
-		ty1 = -(C - r.p).Dot(y1N) / r.dir.Dot(y1N);
-	if (r.dir.Dot(z0N) != 0)
-		tz0 = -(A - r.p).Dot(z0N) / r.dir.Dot(z0N);
-	if (r.dir.Dot(z1N) != 0)
-		tz1 = -(E - r.p).Dot(z1N) / r.dir.Dot(z1N);
-
-	float tentry, texit; // hit distances on box on entry and exit; if ( entry < exit ) ray intersects the box;
-
-	tentry = max(max(tx0, ty0), tz0);
-	texit = min(min(tx1, ty1), tz1);
-	if (tentry < texit && tentry < t_max)
-		return true;
-
-	return false;
+	return true;
 }
 
 bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
-	int vertices = NV();
 	int faces = NF();
-	return false;
+	bool status = false;
+	Box boundingBox = GetBoundBox();
+	if (boundingBox.IntersectRay(ray, hInfo.z))
+	{
+		for (int i = 0; i < faces; i++)
+		{
+			float z = hInfo.z;
+			if (IntersectTriangle(ray, hInfo, hitSide, i))
+			{
+				status = true;
+			}
+		}
+	}
+	return status;
 }
 
-bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsigned int faceID) const {
+bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsigned int faceID) const
+{
+	float t = BIGFLOAT;
+	Point3 vertexA, vertexB, vertexC, triNUnNorm, triNormal, hitPoint;
+		
+	TriFace face = F(faceID);
+	vertexA = V(face.v[0]);
+	vertexB = V(face.v[1]);
+	vertexC = V(face.v[2]);
+
+	triNUnNorm = (vertexB - vertexA).Cross(vertexC - vertexA);
+	triNormal = triNUnNorm.GetNormalized();
+		
+	//t = (d - n.P)/n.D; d = n.x (x - any point on triangle eg. A => d = n.A); t = (n.A - n.P)/n.D;
+	if (ray.dir.Dot(triNormal) != 0)
+		t = (triNormal.Dot(vertexA) - (triNormal.Dot(ray.p))) / triNormal.Dot(ray.dir);
+
+	if (t < hInfo.z && t > BIAS)
+	{
+		hitPoint = ray.p + t * ray.dir;
+		//checking if it is inside the triangle
+		float totalArea, APB, BPC, CPA, alpha, beta, gamma;
+		totalArea = triNUnNorm.Dot(triNormal);
+		APB = ((vertexB - vertexA).Cross(hitPoint - vertexA)).Dot(triNormal);
+		BPC = ((vertexC - vertexB).Cross(hitPoint - vertexB)).Dot(triNormal);
+		CPA = ((vertexA - vertexC).Cross(hitPoint - vertexC)).Dot(triNormal);
+		alpha = BPC / totalArea;
+		gamma = APB / totalArea;
+		beta = CPA / totalArea;
+
+		if (alpha >= 0 && beta >= 0 && gamma >= 0 )
+		{
+			//inside the circle
+			hInfo.p = hitPoint;
+			hInfo.z = t;
+			Point3 intrapolatedNormal = GetNormal(faceID, Point3(alpha, beta, gamma));
+			hInfo.N = intrapolatedNormal;
+			return true;
+		}
+	}
 	return false;
 }
