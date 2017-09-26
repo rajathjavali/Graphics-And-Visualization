@@ -23,7 +23,7 @@ using namespace tbb;
 #define CAM_TO_IMG_DIST 1 // later gets changed, distance of img plane from the camera
 #define IMG_NAME "prj5.jpg"
 #define Z_IMG_NAME "prj5_z.jpg"
-#define RESOURCE_NAME "resource\\Cornell_Box_Scene.xml" //scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml, scene_prj4.xml, Cornell_Box_Scene.xml
+#define RESOURCE_NAME "resource\\Cornell_Box_Scene.xml" //scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml, scene_prj4.xml, Cornell_Box_Scene.xml, example_box_tri_obj.xml
 
 Node rootNode;
 Camera camera;
@@ -42,6 +42,26 @@ void BeginRender();
 void Trace(int i, int j);
 bool traceNode(Node *node, Ray &ray, HitInfo &hitInfo, int hitSide);
 void StopRender();
+
+void Init()
+{
+	u = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
+	v = camera.dir ^ u; // v vector in -y direction
+	int imgSize = renderImage.GetWidth() * renderImage.GetHeight();
+	pixelArray = renderImage.GetPixels();
+
+	float heightOfImgPlane = 2 * tan((camera.fov / 2) * PI / 180.0f) * CAM_TO_IMG_DIST;
+	float pixelSize = heightOfImgPlane / camera.imgHeight;
+	distanceBuffer = renderImage.GetZBuffer();
+
+	// setting the magnitude of the vectors equivalent to pixel size	
+	u = u * pixelSize;
+	v = v * pixelSize;
+
+	startingPoint = camera.pos + camera.dir * CAM_TO_IMG_DIST
+		- v * (camera.imgHeight / 2) // since vector v is in -y direction and we need to go in +y direction to get to the top corner
+		- u * (camera.imgWidth / 2); // since vector u is in +x direction and we need to go in -x direction to get to the top corner
+}
 
 // Blinn shading
 // H = L+V/|L+V|
@@ -157,7 +177,7 @@ Color MtlBlinn::Shade(const Ray &ray, const HitInfo &hInfo, const LightList &lig
 		HitInfo temp;
 		temp.z = BIGFLOAT;
 
-		if (traceNode(&rootNode, reflectedRay, temp, HIT_FRONT_AND_BACK))
+		if (traceNode(&rootNode, reflectedRay, temp, HIT_FRONT))
 			if (hInfo.front)
 				color += totalReflection * temp.node->GetMaterial()->Shade(reflectedRay, temp, lights, (bounceCount - 1));
 	}
@@ -230,23 +250,7 @@ int main()
 
 void BeginRender()
 {
-	u = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
-	v = camera.dir ^ u; // v vector in -y direction
-	int imgSize = renderImage.GetWidth() * renderImage.GetHeight();
-	pixelArray = renderImage.GetPixels();
-
-	float heightOfImgPlane = 2 * tan((camera.fov / 2) * PI / 180.0f) * CAM_TO_IMG_DIST;
-	float pixelSize = heightOfImgPlane / camera.imgHeight;
-	distanceBuffer = renderImage.GetZBuffer();
-
-	// setting the magnitude of the vectors equivalent to pixel size	
-	u = u * pixelSize;
-	v = v * pixelSize;
-
-	startingPoint = camera.pos + camera.dir * CAM_TO_IMG_DIST
-		- v * (camera.imgHeight / 2) // since vector v is in -y direction and we need to go in +y direction to get to the top corner
-		- u * (camera.imgWidth / 2); // since vector u is in +x direction and we need to go in -x direction to get to the top corner
-
+	Init();
 	clock_t startTime = clock();
 	tbb::parallel_for(0, camera.imgHeight, [&](int j) {
 		for (int i = 0; i < camera.imgWidth; i++) {
@@ -278,7 +282,7 @@ void Trace(int i, int j) {
 	if (traceNode(&rootNode, ray, hit_info, HIT_FRONT))
 	{
 		distanceBuffer[pixelIndexInImg] = hit_info.z;
-		pixelColour = hit_info.node->GetMaterial()->Shade(ray, hit_info, lights, 7);
+		pixelColour = hit_info.node->GetMaterial()->Shade(ray, hit_info, lights, 4);
 		pixelArray[pixelIndexInImg].r = pixelColour.r * 255;
 		pixelArray[pixelIndexInImg].b = pixelColour.b * 255;
 		pixelArray[pixelIndexInImg].g = pixelColour.g * 255;

@@ -136,8 +136,8 @@ bool Box::IntersectRay(const Ray &r, float t_max) const {
 
 	if (IsEmpty())
 		return false;
-	float ltx, lty, ltz, tmin = BIGFLOAT; // lower bound x y z
-	float utx, uty, utz, tmax = 0; // upper bound x y z
+	float ltx, lty, ltz, tmin = 0; // lower bound x y z
+	float utx, uty, utz, tmax = BIGFLOAT; // upper bound x y z
 
 	if (r.dir.x != 0)
 	{
@@ -151,6 +151,8 @@ bool Box::IntersectRay(const Ray &r, float t_max) const {
 			tmax = utx = (pmin.x - r.p.x) / r.dir.x;
 			tmin = ltx = (pmax.x - r.p.x) / r.dir.x;
 		}
+		if (tmin < 0)
+			tmin = 0;
 	}
 	if (r.dir.y != 0)
 	{
@@ -195,8 +197,10 @@ bool Box::IntersectRay(const Ray &r, float t_max) const {
 		if (tmax > utz)
 			tmax = utz;
 	}
-	
-	return true;
+	if(tmin < tmax)
+		return true;
+	return false;
+
 }
 
 bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
@@ -220,16 +224,27 @@ bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsigned int faceID) const
 {
 	float t = BIGFLOAT;
-	Point3 vertexA, vertexB, vertexC, triNUnNorm, triNormal, hitPoint;
+	Point3 vertexA, vertexB, vertexC, triNormal, hitPoint;
 		
 	TriFace face = F(faceID);
 	vertexA = V(face.v[0]);
 	vertexB = V(face.v[1]);
 	vertexC = V(face.v[2]);
 
-	triNUnNorm = (vertexB - vertexA).Cross(vertexC - vertexA);
-	triNormal = triNUnNorm.GetNormalized();
-		
+	triNormal = (vertexB - vertexA).Cross(vertexC - vertexA);
+	triNormal.Normalize();
+	
+	/*if (hitSide == HIT_BACK)
+	{
+		if (ray.dir.Dot(triNormal) > 0)
+			return false;
+	}
+	if (hitSide == HIT_FRONT)
+	{
+		if (ray.dir.Dot(triNormal) < 0)
+			return false;
+	}*/
+
 	//t = (d - n.P)/n.D; d = n.x (x - any point on triangle eg. A => d = n.A); t = (n.A - n.P)/n.D;
 	if (ray.dir.Dot(triNormal) != 0)
 		t = (triNormal.Dot(vertexA) - (triNormal.Dot(ray.p))) / triNormal.Dot(ray.dir);
@@ -237,6 +252,49 @@ bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsi
 	if (t < hInfo.z && t > BIAS)
 	{
 		hitPoint = ray.p + t * ray.dir;
+
+		//projecting everything into 2d in order to optimize the calculation
+		Point2 vertA2d, vertB2d, vertC2d, triNUnNorm2d, triNormal2d, hitPoint2d;
+		float totalArea, APB, BPC, CPA, alpha, beta, gamma;
+		if (triNormal.x > triNormal.y && triNormal.x > triNormal.z)
+		{
+			vertA2d = Point2(vertexA.y, vertexA.z);
+			vertB2d = Point2(vertexB.y, vertexB.z);
+			vertC2d = Point2(vertexC.y, vertexC.z);
+			hitPoint2d = Point2(hitPoint.y, hitPoint.z);
+		}
+		else if (triNormal.y > triNormal.x && triNormal.y > triNormal.z)
+		{
+			vertA2d = Point2(vertexA.x, vertexA.z);
+			vertB2d = Point2(vertexB.x, vertexB.z);
+			vertC2d = Point2(vertexC.x, vertexC.z);
+			hitPoint2d = Point2(hitPoint.x, hitPoint.z);
+		}
+		else
+		{
+			vertA2d = Point2(vertexA.x, vertexA.y);
+			vertB2d = Point2(vertexB.x, vertexB.y);
+			vertC2d = Point2(vertexC.x, vertexC.y);
+			hitPoint2d = Point2(hitPoint.x, hitPoint.y);
+		}
+		totalArea = (vertB2d - vertA2d).Cross(vertC2d - vertA2d);
+		APB = (vertB2d - vertA2d).Cross(hitPoint2d - vertA2d);
+		BPC = (vertC2d - vertB2d).Cross(hitPoint2d - vertB2d);
+		CPA = (vertA2d - vertC2d).Cross(hitPoint2d - vertC2d);
+		alpha = BPC / totalArea;
+		gamma = APB / totalArea;
+		beta = CPA / totalArea;
+		if (alpha >= 0 && beta >= 0 && gamma >= 0)
+		{
+			//inside the circle
+			hInfo.p = hitPoint;
+			hInfo.z = t;
+			Point3 intrapolatedNormal = GetNormal(faceID, Point3(alpha, beta, gamma));
+			hInfo.N = intrapolatedNormal.GetNormalized();
+			return true;
+		}
+		/*
+		//without 2d projection; same result but takes twice as longer time in computation
 		//checking if it is inside the triangle
 		float totalArea, APB, BPC, CPA, alpha, beta, gamma;
 		totalArea = triNUnNorm.Dot(triNormal);
@@ -255,7 +313,7 @@ bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsi
 			Point3 intrapolatedNormal = GetNormal(faceID, Point3(alpha, beta, gamma));
 			hInfo.N = intrapolatedNormal;
 			return true;
-		}
+		}*/
 	}
 	return false;
 }
