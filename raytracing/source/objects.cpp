@@ -225,28 +225,7 @@ bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 	unsigned int nodeID, child1 = 0, child2 = 0, rootID = bvh.GetRootNodeID();
 	std::vector<unsigned int> stack;
 	stack.push_back(rootID);
-	/*if (hitSide == HIT_FRONT) {
-		if (!boundingBox.IntersectRay(ray, hInfo.z))
-			return status;
-		if (!bvh.IsLeafNode(rootID))
-		{
-			bvh.GetChildNodes(rootID, child1, child2);
-			stack.push_back(child2), stack.push_back(child1);
-		}
-		else
-			stack.push_back(rootID);
-	}
-	else if (hitSide == HIT_FRONT_AND_BACK)
-	{
-		if (!bvh.IsLeafNode(rootID))
-		{
-			bvh.GetChildNodes(rootID, child1, child2);
-			stack.push_back(child2), stack.push_back(child1);
-		}
-		else
-			stack.push_back(rootID);
-	}
-	*/
+
 	while (!stack.empty())
 	{
 		if (!bvh.IsLeafNode(nodeID = pop(stack)))
