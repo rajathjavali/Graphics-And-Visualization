@@ -8,6 +8,9 @@
 
 #define BIAS 0.001
 
+//#define min(x, y) ((x) < (y) ? (x) : (y))
+//#define max(x, y) ((x) > (y) ? (x) : (y))
+
 Plane thePlane;
 Sphere theSphere;
 
@@ -122,7 +125,11 @@ bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 		if (fabs(hP.x) < 1 && fabs(hP.y) < 1)
 		{
 			hInfo.z = t;
-			hInfo.N = Point3(0, 0, 1);
+			if (ray.dir.Dot(Point3(0, 0, 1)) > 0)
+				hInfo.N = Point3(0, 0, 1);
+			else
+				hInfo.N = Point3(0, 0, -1);
+
 			hInfo.p = hP;
 			return true;
 		}
@@ -133,89 +140,145 @@ bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 //assume box is axis aligned
 //check if ray is aligned to any of the axis and then do ray plane interaction with the remaining faces.'
 bool Box::IntersectRay(const Ray &r, float t_max) const {
-
+	
+	bool intersectStatus = false;
 	if (IsEmpty())
 		return false;
-	float ltx, lty, ltz, tmin = 0; // lower bound x y z
-	float utx, uty, utz, tmax = BIGFLOAT; // upper bound x y z
+	float val1 = 0, val2 = 0;
+	float x0, y0, z0, tmin = -INFINITY; // lower bound x y z
+	float x1, y1, z1, tmax = t_max; // upper bound x y z
+
+	float dirInv = 0;
 
 	if (r.dir.x != 0)
 	{
-		if (r.dir.x > 0)
-		{
-			tmin = ltx = (pmin.x - r.p.x) / r.dir.x;
-			tmax = utx = (pmax.x - r.p.x) / r.dir.x;
-		}
-		else
-		{
-			tmax = utx = (pmin.x - r.p.x) / r.dir.x;
-			tmin = ltx = (pmax.x - r.p.x) / r.dir.x;
-		}
-		if (tmin < 0)
-			tmin = 0;
+		dirInv = 1.0f / r.dir.x;
+		
+		val1 = (pmin.x - r.p.x) * dirInv;
+		val2 = (pmax.x - r.p.x) * dirInv;
+
+		x0 = min(val1, val2);
+		x1 = max(val1, val2);
+		
+		tmin = max(tmin, min(x0, x1));
+		tmax = min(tmax, max(x0, x1));
+
+		intersectStatus = true;
 	}
 	if (r.dir.y != 0)
 	{
-		if (r.dir.y > 0)
-		{
-			lty = (pmin.y - r.p.y) / r.dir.y;
-			uty = (pmax.y - r.p.y) / r.dir.y;
-		}
-		else
-		{
-			 uty = (pmin.y - r.p.y) / r.dir.y;
-			 lty = (pmax.y - r.p.y) / r.dir.y;
-		}
+		dirInv = 1.0f / r.dir.y;
 
-		if ((tmin > uty) || (lty > tmax))
+		val1 = (pmin.y - r.p.y) * dirInv;
+		val2 = (pmax.y - r.p.y) * dirInv;
+
+		y0 = min(val1, val2);
+		y1 = max(val1, val2);
+
+		if ((tmin > y1) || (y0 > tmax))
 			return false;
 		
-		if (tmin < lty)
-			tmin = lty;
-		
-		if (tmax > uty)
-			tmax = uty;
+		tmin = max(tmin, y0);
+		tmax = min(tmax, y1);
+
+		intersectStatus = true;
 	}
 	if (r.dir.z != 0)
 	{
-		if (r.dir.z > 0)
-		{
-			ltz = (pmin.z - r.p.z) / r.dir.z;
-			utz = (pmax.z - r.p.z) / r.dir.z;
-		}
-		else
-		{
-			utz = (pmin.z - r.p.z) / r.dir.z;
-			ltz = (pmax.z - r.p.z) / r.dir.z;
-		}
-		if ((tmin > utz) || (ltz > tmax))
+		dirInv = 1.0f / r.dir.z;
+
+		val1 = (pmin.z - r.p.z) * dirInv;
+		val2 = (pmax.z - r.p.z) * dirInv;
+
+		z0 = min(val1, val2);
+		z1 = max(val1, val2);
+
+		if ((tmin > z1) || (z0 > tmax))
 			return false;
 
-		if (tmin < ltz)
-			tmin = ltz;
-		
-		if (tmax > utz)
-			tmax = utz;
+		tmin = max(tmin, z0);
+		tmax = min(tmax, z1);
+
+		intersectStatus = true;
 	}
-	if(tmin < tmax)
-		return true;
+	
+	if(tmin <= tmax)
+		return intersectStatus;
 	return false;
 
 }
 
+unsigned int pop(std::vector<unsigned int>& stack) {
+	unsigned int i = 0;
+	if (!stack.empty())
+	{
+		i = stack.back();
+		stack.pop_back();
+	}
+	return i;
+}
+
 bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
-	int faces = NF();
+
 	bool status = false;
 	Box boundingBox = GetBoundBox();
-	if (boundingBox.IntersectRay(ray, hInfo.z))
-	{
-		for (int i = 0; i < faces; i++)
+	unsigned int nodeID, child1 = 0, child2 = 0, rootID = bvh.GetRootNodeID();
+	std::vector<unsigned int> stack;
+	stack.push_back(rootID);
+	/*if (hitSide == HIT_FRONT) {
+		if (!boundingBox.IntersectRay(ray, hInfo.z))
+			return status;
+		if (!bvh.IsLeafNode(rootID))
 		{
-			float z = hInfo.z;
-			if (IntersectTriangle(ray, hInfo, hitSide, i))
+			bvh.GetChildNodes(rootID, child1, child2);
+			stack.push_back(child2), stack.push_back(child1);
+		}
+		else
+			stack.push_back(rootID);
+	}
+	else if (hitSide == HIT_FRONT_AND_BACK)
+	{
+		if (!bvh.IsLeafNode(rootID))
+		{
+			bvh.GetChildNodes(rootID, child1, child2);
+			stack.push_back(child2), stack.push_back(child1);
+		}
+		else
+			stack.push_back(rootID);
+	}
+	*/
+	while (!stack.empty())
+	{
+		if (!bvh.IsLeafNode(nodeID = pop(stack)))
+		{
+			boundingBox = bvh.GetNodeBounds(nodeID);
+			if (boundingBox.IntersectRay(ray, hInfo.z))
 			{
-				status = true;
+				bvh.GetChildNodes(nodeID, child1, child2);
+				stack.push_back(child2), stack.push_back(child1);
 			}
+		}
+		else {
+			if (TraceBVHNode(ray, hInfo, hitSide, nodeID))
+				status = true;
+		}
+	}
+
+	return status;
+}
+
+bool TriObj::TraceBVHNode(const Ray &ray, HitInfo &hInfo, int hitSide, unsigned int nodeID) const
+{
+	bool status = false;
+	int count = bvh.GetNodeElementCount(nodeID);
+	const unsigned int* list = bvh.GetNodeElements(nodeID);
+	for (int i = 0; i < count; i++)
+	{
+		float z = hInfo.z;
+		if (IntersectTriangle(ray, hInfo, hitSide, list[i]))
+		{
+			if (z > hInfo.z)
+				status = true;
 		}
 	}
 	return status;
@@ -234,16 +297,16 @@ bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsi
 	triNormal = (vertexB - vertexA).Cross(vertexC - vertexA);
 	triNormal.Normalize();
 	
-	/*if (hitSide == HIT_BACK)
+	if (hitSide == HIT_BACK)
 	{
-		if (ray.dir.Dot(triNormal) > 0)
+		if (ray.dir.Dot(triNormal) < 0)
 			return false;
 	}
 	if (hitSide == HIT_FRONT)
 	{
-		if (ray.dir.Dot(triNormal) < 0)
+		if (ray.dir.Dot(triNormal) > 0)
 			return false;
-	}*/
+	}
 
 	//t = (d - n.P)/n.D; d = n.x (x - any point on triangle eg. A => d = n.A); t = (n.A - n.P)/n.D;
 	if (ray.dir.Dot(triNormal) != 0)
@@ -280,40 +343,24 @@ bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsi
 		totalArea = (vertB2d - vertA2d).Cross(vertC2d - vertA2d);
 		APB = (vertB2d - vertA2d).Cross(hitPoint2d - vertA2d);
 		BPC = (vertC2d - vertB2d).Cross(hitPoint2d - vertB2d);
-		CPA = (vertA2d - vertC2d).Cross(hitPoint2d - vertC2d);
+		//CPA = (vertA2d - vertC2d).Cross(hitPoint2d - vertC2d);
 		alpha = BPC / totalArea;
 		gamma = APB / totalArea;
-		beta = CPA / totalArea;
+		beta = 1 - (alpha + gamma);
+		//beta = CPA / totalArea;
 		if (alpha >= 0 && beta >= 0 && gamma >= 0)
 		{
 			//inside the circle
 			hInfo.p = hitPoint;
 			hInfo.z = t;
 			Point3 intrapolatedNormal = GetNormal(faceID, Point3(alpha, beta, gamma));
-			hInfo.N = intrapolatedNormal.GetNormalized();
+			intrapolatedNormal.Normalize();
+			if (ray.dir.Dot(intrapolatedNormal) > 0)
+				hInfo.N = intrapolatedNormal;
+			else
+				hInfo.N = -intrapolatedNormal;
 			return true;
 		}
-		/*
-		//without 2d projection; same result but takes twice as longer time in computation
-		//checking if it is inside the triangle
-		float totalArea, APB, BPC, CPA, alpha, beta, gamma;
-		totalArea = triNUnNorm.Dot(triNormal);
-		APB = ((vertexB - vertexA).Cross(hitPoint - vertexA)).Dot(triNormal);
-		BPC = ((vertexC - vertexB).Cross(hitPoint - vertexB)).Dot(triNormal);
-		CPA = ((vertexA - vertexC).Cross(hitPoint - vertexC)).Dot(triNormal);
-		alpha = BPC / totalArea;
-		gamma = APB / totalArea;
-		beta = CPA / totalArea;
-
-		if (alpha >= 0 && beta >= 0 && gamma >= 0 )
-		{
-			//inside the circle
-			hInfo.p = hitPoint;
-			hInfo.z = t;
-			Point3 intrapolatedNormal = GetNormal(faceID, Point3(alpha, beta, gamma));
-			hInfo.N = intrapolatedNormal;
-			return true;
-		}*/
 	}
 	return false;
 }

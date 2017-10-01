@@ -39,6 +39,7 @@ Color24 *pixelArray;
 extern void ShowViewport();
 extern int LoadScene(const char *filename);
 void BeginRender();
+void Init();
 void Trace(int i, int j);
 bool traceNode(Node *node, Ray &ray, HitInfo &hitInfo, int hitSide);
 void StopRender();
@@ -101,7 +102,7 @@ Color MtlBlinn::Shade(const Ray &ray, const HitInfo &hInfo, const LightList &lig
 
 
 		Hi = (lDir + viewDir).GetNormalized(); // half vector		
-		color += liIntensity * fabs(surfaceNormal.Dot(lDir)) * (diffuse + specular *  pow(fabs(surfaceNormal.Dot(Hi)), glossiness));
+		color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse + specular *  pow(fmax(0, surfaceNormal.Dot(Hi)), glossiness));
 	}
 	if (refraction != Color(0, 0, 0))
 	{

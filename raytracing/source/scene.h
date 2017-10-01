@@ -52,6 +52,8 @@ typedef unsigned char uchar;
 #define BIGFLOAT 1.0e30f
 
 //-------------------------------------------------------------------------------
+void Init();
+void Trace(int i, int j);
 
 class Ray
 {
