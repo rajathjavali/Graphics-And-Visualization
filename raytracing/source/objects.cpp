@@ -238,8 +238,10 @@ bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 			}
 		}
 		else {
-			if (TraceBVHNode(ray, hInfo, hitSide, nodeID))
-				status = true;
+			boundingBox = bvh.GetNodeBounds(nodeID);
+			if (boundingBox.IntersectRay(ray, hInfo.z))
+				if (TraceBVHNode(ray, hInfo, hitSide, nodeID))
+					status = true;
 		}
 	}
 

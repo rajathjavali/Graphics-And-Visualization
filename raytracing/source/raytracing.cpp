@@ -21,8 +21,8 @@ using namespace tbb;
 
 #define PI 3.1415
 #define CAM_TO_IMG_DIST 1 // later gets changed, distance of img plane from the camera
-#define IMG_NAME "prj5.jpg"
-#define Z_IMG_NAME "prj5_z.jpg"
+#define IMG_NAME "prj6.jpg"
+#define Z_IMG_NAME "prj6_z.jpg"
 #define RESOURCE_NAME "resource\\Cornell_Box_Scene.xml" 
 //scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml, scene_prj4.xml, Cornell_Box_Scene.xml, example_box_tri_obj.xml, helicopter.xml
 
