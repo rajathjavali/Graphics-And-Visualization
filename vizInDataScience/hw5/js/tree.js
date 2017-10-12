@@ -14,7 +14,6 @@ class Tree {
      */
     createTree(treeData) {
         this.treeData = treeData;
-        console.log(treeData);
         // ******* TODO: PART VI *******
         let height = 800, width = 300;
         let svg = d3.select("#tree");
