@@ -73,7 +73,7 @@ class Table {
 		
 		this.goalScale = d3.scaleLinear()
 						.domain([0, dataMax])
-						.range([this.cell.buffer, 2.5 * this.cell.width - this.cell.buffer]);
+						.range([this.cell.buffer, 2 * this.cell.width - this.cell.buffer]);
         
 		
 		// Create the x axes for the goalScale.
@@ -83,7 +83,7 @@ class Table {
         //add GoalAxis to header of col 1.
 		let table = d3.select("#goalHeader")
 						.append("svg")
-						.attr("width", 2.5 * this.cell.width)
+						.attr("width", 2 * this.cell.width)
 						.attr("height", this.cell.height);
 		table.append("g")
 				.call(goalAxis);
@@ -96,11 +96,80 @@ class Table {
         // Set sorting callback for clicking on headers
 
         // Clicking on headers should also trigger collapseList() and updateTable(). 
-
-       
+        let sortfn = this.sort;
+        let _this = this;
+        let status = {"Team": false, " Goals ": true, "Round/Result": true, "Wins": true, "Losses": true, "Total Games": true};
+        let headrow = d3.select("table").select("thead").select("tr");
+        
+        headrow.selectAll("th").on("click", function(d){
+        	let selection = d3.select(this).text();
+        	if(status[selection] == true)
+        		status[selection] = false;
+        	else
+        		status[selection] = true;
+        	sortfn(_this, selection, status[selection]);
+        });
+        headrow.selectAll("td").on("click", function(d){
+			let selection = d3.select(this).text();
+        	if(status[selection] == true)
+        		status[selection] = false;
+        	else
+        		status[selection] = true;
+        	sortfn(_this, selection, status[selection]);
+        });
+        //console.log(this.tableElements);
     }
 
+    sort(_this, val, status) {
+    	_this.collapseList();
+    	switch(val)
+    	{
+    		case "Team": 
+    		_this.tableElements.sort(function(x, y){
+    			if(status)
+    				return d3.ascending(x.key, y.key);
+    			return d3.descending(x.key, y.key);
+    		});
+    		break;
+    		case " Goals ":
+    		_this.tableElements.sort(function(x, y){
+    			if(status)
+    				return d3.ascending(x.value["Delta Goals"], y.value["Delta Goals"]);
+    			return d3.descending(x.value["Delta Goals"], y.value["Delta Goals"]);
+    		});
+    		break;
+    		case "Round/Result":
+    		_this.tableElements.sort(function(x, y){
+    			if(status)
+    				return d3.ascending(x.value.Result.ranking, y.value.Result.ranking);
+    			return d3.descending(x.value.Result.ranking, y.value.Result.ranking);
+    		});
+    		break;
+    		case "Wins":
+    		_this.tableElements.sort(function(x, y){
+    			if(status)
+    				return d3.ascending(x.value.Wins, y.value.Wins);
+    			return d3.descending(x.value.Wins, y.value.Wins);
+    		});
+    		break;
+    		case "Losses":
+    		_this.tableElements.sort(function(x, y){
+    			if(status)
+    				return d3.ascending(x.value.Losses, y.value.Losses);
+    			return d3.descending(x.value.Losses, y.value.Losses);
+    		});
+    		break;
+    		case "Total Games":
+    		_this.tableElements.sort(function(x, y){
+    			if(status)
+    				return d3.ascending(x.value.TotalGames, y.value.TotalGames);
+    			return d3.descending(x.value.TotalGames, y.value.TotalGames);
+    		});
+    		break;
 
+    	}
+    	_this.updateTable();
+    }
     /**
      * Updates the table contents with a row for each element in the global variable tableElements.
      */
@@ -133,12 +202,14 @@ class Table {
 		// ******* TODO: PART III *******
         //--------------------------------- Create table rows --------------------------------------------
 		//---------------------------- Updating table and elements ---------------------------------------
-		console.log(this.tableElements);
+		//console.log(this.tableElements);
 		let table = d3.select("#matchTable").select("tbody").selectAll("tr").data(this.tableElements);
 		
 		let tr = table.enter()
 						.append("tr")
-						.on("click", (d, i)=>this.updateList(i));
+						.on("click", (d, i)=>this.updateList(i))
+						.on("mouseover", d=>this.tree.updateTree(d))
+						.on("mouseout", d=>this.tree.clearTree(d));
 		
 		table.exit().remove();
 		table = tr.merge(table);
@@ -161,6 +232,14 @@ class Table {
 
         //Append td elements for the remaining columns.
 		//Data for each cell is of the type: {'type':<'game' or 'aggregate'>, 'value':<[array of 1 or two elements]>}
+		//Add scores as title property to appear on hover
+
+        //Populate cells (do one type of cell at a time )
+
+        //Create diagrams in the goals column
+
+        //Set the color of all games that tied to light gray
+
 		let td = table.selectAll("td")
 					.data(d=>[
 								{type: d.value.type, vis: "goals",  value:[{type: d.value.type, delta: d.value[this.goalsMadeHeader] - d.value[this.goalsConcededHeader], goals: d.value[this.goalsMadeHeader]}, {type: d.value.type, delta: d.value[this.goalsMadeHeader] - d.value[this.goalsConcededHeader], goals: d.value[this.goalsConcededHeader]}]},
@@ -179,7 +258,7 @@ class Table {
 
 		let newsvg = svg.selectAll("svg").data(function(d){return d3.select(this).data();}).enter()
 						.append("svg")
-						.attr("width", this.cell.width * 2.5)
+						.attr("width", this.cell.width * 2)
 						.attr("height", this.cell.height);
 
 		svg.exit().remove();
@@ -254,7 +333,7 @@ class Table {
 			.on("mouseover", function(d){
 				d3.select(this)
 					.append("title")
-					.text(d); 
+					.text(d.goals); 
 			})
 			.on("mouseoout", function(d){
 				d3.select(this).remove("title");
@@ -263,32 +342,40 @@ class Table {
         let results = td.filter(function(d){return d.vis == "text";})
 						.selectAll("svg")
 						.data(function(d){return d3.select(this).data();})
-		let resultsvg = results.enter().append("svg")
-							.attr("width", 2.5 * this.cell.width)
-							.attr("height", this.cell.height)
-							.selectAll("text")
-							.data(d=>d.value)
-							.enter()
-							.append("text")
-							.attr("x", 0)
-							.attr("y", cellcenter);
+		let resultsvg = results.enter()
+							.append("svg")
+							.attr("width", 1.6 * this.cell.width)
+							.attr("height", this.cell.height);
 		results.exit().remove();
 		results = resultsvg.merge(results);
+
+		let textfield = results.selectAll("text")
+						.data(d=>d.value);
+		let newtext = textfield.enter()
+								.append("text")
+								.attr("x", 0)
+								.attr("y", cellcenter);
 		
-		results
+		textfield.exit().remove();
+		textfield = newtext.merge(textfield);
+		
+		textfield.attr("width", 1.6 * this.cell.width)
+				.attr("height", this.cell.height)			
 				.text(d=>d);
 		
 		//------------------------------------- Wins, Losses, TotalGames -------------------------------------
-		let barsSvg = td.filter(function(d){return d.vis == "bar";});
-		let newBarSvg = barsSvg.selectAll("svg").data(function(d){return d3.select(this).data();}).enter()
+		let svgdata = td.filter(function(d){return d.vis == "bar";});
+		let barSvg = svgdata.selectAll("svg").data(function(d){return d3.select(this).data();});
+
+		let newbarsvg = barSvg.enter()
 						.append("svg")
 						.attr("width", this.cell.width)
 						.attr("height", this.cell.height);
 		
-		barsSvg.exit().remove();
-		barsSvg = newBarSvg.merge(barsSvg);
+		barSvg.exit().remove();
+		barSvg = newbarsvg.merge(barSvg);
 						
-		let bars = barsSvg.selectAll("rect").data(function(d){return d3.select(this).data();});
+		let bars = barSvg.selectAll("rect").data(function(d){return d3.select(this).data();});
 		let newBar = bars.enter().append("rect");
 		
 		bars.exit().remove();
@@ -297,28 +384,19 @@ class Table {
 		bars.attr("x", 0)
 			.attr("y", 0)
 			.attr("height", this.cell.height)
-			.attr("width", function(d){return barScale(d.value[0]);})
+			.attr("width", function(d){if(d.type == "game") return 0; return barScale(d.value[0]);})
 			.attr("style", d=>"fill:"+colorScale(d.value[0]))
 		
-		let textf = barsSvg.selectAll("text").data(function(d){return d3.select(this).data();});
+		let textf = barSvg.selectAll("text").data(function(d){return d3.select(this).data();});
 		let newText = textf.enter().append("text");
 	
 		textf.exit().remove();
 		textf = newText.merge(textf);
 				
-		textf.text(d=>d.value[0])
-			.attr("x", d=>barScale(d.value[0])-2)
+		textf.text(function(d){ if(d.type == "game") return ""; return d.value[0];})
+			.attr("x", function(d){ if(d.type == "game") return 0; return barScale(d.value[0])-2;})
 			.attr("y", this.cell.height/4 * 3)
 			.attr("style", "font-size: 12px ;fill: white; text-anchor: end");
-		
-        //Add scores as title property to appear on hover
-
-        //Populate cells (do one type of cell at a time )
-
-        //Create diagrams in the goals column
-
-        //Set the color of all games that tied to light gray
-
     };
 
     /**
@@ -339,7 +417,6 @@ class Table {
 				let key = "x" + newlist[i].value.games[k-1].key;
 				newlist[i+k].key = key;
 			}
-			console.log(newlist);
 			this.tableElements = newlist.concat(this.tableElements);
 		}
 		else if (this.tableElements[i].value.type == "aggregate" && (i == (len-1) ? true : this.tableElements[i+1].value.type == "game"))

@@ -124,6 +124,10 @@ header {
     fill: #364e74;
 }
 
+.winner text {
+    font: 14px sans-serif;
+}
+
 .loser text {
     text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
 }
