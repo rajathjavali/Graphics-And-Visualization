@@ -55,6 +55,8 @@ typedef unsigned char uchar;
 
 #define BIGFLOAT 1.0e30f
 
+void Init();
+void Trace(int i, int j);
 //-------------------------------------------------------------------------------
 
 class Ray
@@ -70,6 +72,14 @@ public:
 
 //-------------------------------------------------------------------------------
 
+struct DifRays {
+	Ray ray, difx, dify;
+	DifRays() {};
+	DifRays(const Point3 &_p, const Point3 &_dir) : ray(_p, _dir) {};
+	DifRays(const Point3 &_p, const Point3 &_dir1, const Point3 &_dir2, const Point3 &_dir3) : ray(_p, _dir1), difx(_p, _dir2), dify(_p, _dir3) {};
+};
+
+//-------------------------------------------------------------------------------
 class Box
 {
 public:
@@ -123,7 +133,7 @@ public:
 	bool IsInside(const Point3 &p) const { for (int i = 0; i<3; i++) if (pmin[i] > p[i] || pmax[i] < p[i]) return false; return true; }
 
 	// Returns true if the ray intersects with the box for any parameter that is smaller than t_max; otherwise, returns false.
-	bool IntersectRay(const Ray &r, float t_max) const;
+	bool IntersectRay(const DifRays &r, float t_max) const;
 };
 
 //-------------------------------------------------------------------------------
@@ -257,7 +267,7 @@ class Material;
 class Object
 {
 public:
-	virtual bool IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide = HIT_FRONT) const = 0;
+	virtual bool IntersectRay(const DifRays &ray, HitInfo &hInfo, int hitSide = HIT_FRONT) const = 0;
 	virtual Box  GetBoundBox() const = 0;
 	virtual void ViewportDisplay(const Material *mtl) const {}  // used for OpenGL display
 };
@@ -286,7 +296,7 @@ public:
 	// ray: incoming ray,
 	// hInfo: hit information for the point that is being shaded, lights: the light list,
 	// bounceCount: permitted number of additional bounces for reflection and refraction.
-	virtual Color Shade(const Ray &ray, const HitInfo &hInfo, const LightList &lights, int bounceCount) const = 0;
+	virtual Color Shade(const DifRays &ray, const HitInfo &hInfo, const LightList &lights, int bounceCount) const = 0;
 
 	virtual void SetViewportMaterial(int subMtlID = 0) const {}   // used for OpenGL display
 };

@@ -96,7 +96,7 @@ class Table {
         // Set sorting callback for clicking on headers
 
         // Clicking on headers should also trigger collapseList() and updateTable(). 
-        let sortfn = this.sort;
+        //let sortfn = this.sort;
         let _this = this;
         let status = {"Team": false, " Goals ": true, "Round/Result": true, "Wins": true, "Losses": true, "Total Games": true};
         let headrow = d3.select("table").select("thead").select("tr");
@@ -107,7 +107,7 @@ class Table {
         		status[selection] = false;
         	else
         		status[selection] = true;
-        	sortfn(_this, selection, status[selection]);
+        	_this.sort(selection, status[selection]);
         });
         headrow.selectAll("td").on("click", function(d){
 			let selection = d3.select(this).text();
@@ -115,60 +115,61 @@ class Table {
         		status[selection] = false;
         	else
         		status[selection] = true;
-        	sortfn(_this, selection, status[selection]);
+        	_this.sort(selection, status[selection]);
         });
         //console.log(this.tableElements);
     }
 
-    sort(_this, val, status) {
-    	_this.collapseList();
+    sort(val, status) {
+    	this.collapseList();
+
     	switch(val)
     	{
     		case "Team": 
-    		_this.tableElements.sort(function(x, y){
-    			if(status)
-    				return d3.ascending(x.key, y.key);
-    			return d3.descending(x.key, y.key);
-    		});
+	    		this.tableElements.sort(function(x, y){
+	    			if(status)
+	    				return d3.ascending(x.key, y.key);
+	    			return d3.descending(x.key, y.key);
+	    		});
     		break;
     		case " Goals ":
-    		_this.tableElements.sort(function(x, y){
-    			if(status)
-    				return d3.ascending(x.value["Delta Goals"], y.value["Delta Goals"]);
-    			return d3.descending(x.value["Delta Goals"], y.value["Delta Goals"]);
-    		});
+	    		this.tableElements.sort(function(x, y){
+	    			if(status)
+	    				return d3.ascending(x.value["Delta Goals"], y.value["Delta Goals"]);
+	    			return d3.descending(x.value["Delta Goals"], y.value["Delta Goals"]);
+	    		});
     		break;
     		case "Round/Result":
-    		_this.tableElements.sort(function(x, y){
-    			if(status)
-    				return d3.ascending(x.value.Result.ranking, y.value.Result.ranking);
-    			return d3.descending(x.value.Result.ranking, y.value.Result.ranking);
-    		});
+	    		this.tableElements.sort(function(x, y){
+	    			if(status)
+	    				return d3.ascending(x.value.Result.ranking, y.value.Result.ranking);
+	    			return d3.descending(x.value.Result.ranking, y.value.Result.ranking);
+	    		});
     		break;
     		case "Wins":
-    		_this.tableElements.sort(function(x, y){
-    			if(status)
-    				return d3.ascending(x.value.Wins, y.value.Wins);
-    			return d3.descending(x.value.Wins, y.value.Wins);
-    		});
+	    		this.tableElements.sort(function(x, y){
+	    			if(status)
+	    				return d3.ascending(x.value.Wins, y.value.Wins);
+	    			return d3.descending(x.value.Wins, y.value.Wins);
+	    		});
     		break;
     		case "Losses":
-    		_this.tableElements.sort(function(x, y){
-    			if(status)
-    				return d3.ascending(x.value.Losses, y.value.Losses);
-    			return d3.descending(x.value.Losses, y.value.Losses);
-    		});
+	    		this.tableElements.sort(function(x, y){
+	    			if(status)
+	    				return d3.ascending(x.value.Losses, y.value.Losses);
+	    			return d3.descending(x.value.Losses, y.value.Losses);
+	    		});
     		break;
     		case "Total Games":
-    		_this.tableElements.sort(function(x, y){
-    			if(status)
-    				return d3.ascending(x.value.TotalGames, y.value.TotalGames);
-    			return d3.descending(x.value.TotalGames, y.value.TotalGames);
-    		});
+	    		this.tableElements.sort(function(x, y){
+	    			if(status)
+	    				return d3.ascending(x.value.TotalGames, y.value.TotalGames);
+	    			return d3.descending(x.value.TotalGames, y.value.TotalGames);
+	    		});
     		break;
 
     	}
-    	_this.updateTable();
+    	this.updateTable();
     }
     /**
      * Updates the table contents with a row for each element in the global variable tableElements.
@@ -176,7 +177,7 @@ class Table {
     updateTable() {
         
 		//---- min and max functions ---------
-		let max = this.max, min = this.min;
+		let _this = this;
 		
 		//----------- Goal Scale --------------------
 		let goalScale = this.goalScale;
@@ -202,7 +203,6 @@ class Table {
 		// ******* TODO: PART III *******
         //--------------------------------- Create table rows --------------------------------------------
 		//---------------------------- Updating table and elements ---------------------------------------
-		//console.log(this.tableElements);
 		let table = d3.select("#matchTable").select("tbody").selectAll("tr").data(this.tableElements);
 		
 		let tr = table.enter()
@@ -224,10 +224,10 @@ class Table {
 		let newth =	th.enter()
 					.append("th")
 					.attr("width", this.cell.width)
-					.attr("height", this.cell.height);;
-					
-		th = newth.merge(th);
-		th.text(d=>d);
+					.attr("height", this.cell.height);
+
+		th = newth.merge(th)
+					.text(d=>d);
 		
 
         //Append td elements for the remaining columns.
@@ -235,11 +235,6 @@ class Table {
 		//Add scores as title property to appear on hover
 
         //Populate cells (do one type of cell at a time )
-
-        //Create diagrams in the goals column
-
-        //Set the color of all games that tied to light gray
-
 		let td = table.selectAll("td")
 					.data(d=>[
 								{type: d.value.type, vis: "goals",  value:[{type: d.value.type, delta: d.value[this.goalsMadeHeader] - d.value[this.goalsConcededHeader], goals: d.value[this.goalsMadeHeader]}, {type: d.value.type, delta: d.value[this.goalsMadeHeader] - d.value[this.goalsConcededHeader], goals: d.value[this.goalsConcededHeader]}]},
@@ -249,56 +244,57 @@ class Table {
 								{type: d.value.type, vis: "bar",  value:[d.value.TotalGames]}
 							]);
 		let newtd = td.enter().append("td");
-		
+
 		td.exit().remove();
 		td = newtd.merge(td);
 
+        //Create diagrams in the goals column
+        //Set the color of all games that tied to light gray
 		let svg = td.filter(function(d){return d.vis == "goals";});
-					//.append("svg").attr("width", this.cell.width * 2).attr("height", this.cell.height);
 
 		let newsvg = svg.selectAll("svg").data(function(d){return d3.select(this).data();}).enter()
-						.append("svg")
-						.attr("width", this.cell.width * 2)
-						.attr("height", this.cell.height);
-
-		svg.exit().remove();
+			.append("svg")
+			.attr("width", this.cell.width * 2)
+			.attr("height", this.cell.height);
+		
+		svg.exit().remove();	
 		svg = newsvg.merge(svg);
 		
 		let goalBars = svg.selectAll("rect").data(function(d){return d3.select(this).data();})
-		let goalbar = goalBars.enter().append("rect");
+
+		/*Apending Rectangle*/
+		let goalBar = goalBars.enter()
+								.append("rect")
 		
-		goalBars = goalbar.merge(goalBars);
-		
-		goalBars.attr("x", function(d){
-				let minVal = min(d.value[0].goals, d.value[1].goals);
-				return goalScale(minVal);
-			})
-			.attr("y", function(d){
-				let val = -5;
-				if(d.type == "game")
-						val = -2.5
-				return cellcenter + val;
-			})
-			.attr("height", function(d){if(d.type == "game") return 5; return 10;})
-			.attr("width", function(d){
-				let minVal = min(d.value[0].goals, d.value[1].goals);
-				let maxVal = max(d.value[0].goals, d.value[1].goals);
-				return goalScale(maxVal) - goalScale(minVal);
-			})
-			.attr("style", function(d){
-				if(d.value[0].delta < 0)
-					return "fill: #f3988c";
-				else
-					return "fill: #a8bad6";
-			})
-			.on("mouseover", function(d){
-				d3.select(this).append("title").text("Goals Scored: "+d.value[0].goals+"\nGoals Conceded: "+d.value[1].goals);
-			})
-			.on("mouseout", function(d){
-				d3.select(this).select("title").remove();
-			});
+		goalBars.exit().remove();
+		goalBars = goalBar.merge(goalBars);
+
+		goalBars.attr("x", function(d){return goalScale(_this.min(d.value[0].goals, d.value[1].goals));})
+				.attr("y", function(d){
+					let delta = _this.cell.height/4;
+					if(d.type == "game")
+							delta = _this.cell.height/8;
+					return cellcenter - delta;
+				})
+				.attr("height", function(d){if(d.type == "game") return _this.cell.height/4; return _this.cell.height/2;})
+				.attr("width", function(d){
+					return Math.abs(goalScale(d.value[0].goals) - goalScale(d.value[1].goals));
+				})
+				.attr("style", function(d){
+					if(d.value[0].delta < 0)
+						return "fill: #f3988c";
+					else
+						return "fill: #a8bad6";
+				})
+				.on("mouseover", function(d){
+					d3.select(this).append("title").text("Goals Scored: " + d.value[0].goals+"\nGoals Conceded: " + d.value[1].goals);
+				})
+				.on("mouseout", function(d){
+					d3.select(this).select("title").remove();
+				});
 		
 		
+		/*Apendending Circles*/
 		let circles = svg.selectAll("circle").data(d=>d.value)
 		let circle = circles.enter().append("circle");
 		
@@ -307,7 +303,7 @@ class Table {
 		
 		circles.attr("cx", d=>goalScale(d.goals))
 			.attr("cy", cellcenter)
-			.attr("r", 5)
+			.attr("r", _this.cell.height/4)
 			.attr("style", function(d,i){
 				let val;
 				if(d.type == "game")
@@ -338,6 +334,7 @@ class Table {
 			.on("mouseoout", function(d){
 				d3.select(this).remove("title");
 			});
+        
         //------------------------------------- Round/Results ------------------------------------------------
         let results = td.filter(function(d){return d.vis == "text";})
 						.selectAll("svg")

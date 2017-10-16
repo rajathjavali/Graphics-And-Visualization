@@ -7,6 +7,7 @@
 #include "objects.h"
 
 #define BIAS 0.001
+#define pi 3.1415
 
 //#define min(x, y) ((x) < (y) ? (x) : (y))
 //#define max(x, y) ((x) > (y) ? (x) : (y))
@@ -18,7 +19,7 @@ Sphere theSphere;
 *  d -> direction from ray to intersection point
 *  x -> distance from ray to intersection point (the z buffer)
 *  before computing x, delta must be 0 or +ve -> b^2 - 4ac (since the abv equ is quadratic in x) */
-bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
+bool Sphere::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) const
 {
 	Point3  rayToObj; // rayToObj = ray - centerOfObj
 	float a, b, c, delta;
@@ -29,9 +30,9 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 	(hInfo.node->GetTransform().GetRow(1).y == hInfo.node->GetTransform().GetRow(2).z))
 	radius = hInfo.node->GetTransform().GetRow(0).x;*/
 
-	rayToObj = ray.p;
-	a = ray.dir.Dot(ray.dir);
-	b = 2 * rayToObj.Dot(ray.dir);
+	rayToObj = rays.ray.p;
+	a = rays.ray.dir.Dot(rays.ray.dir);
+	b = 2 * rayToObj.Dot(rays.ray.dir);
 	c = rayToObj.Dot(rayToObj) - 1.0;
 
 	delta = b * b - 4 * a * c;
@@ -50,7 +51,7 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 		if (x1 > BIAS && x1 < x2 && hInfo.z > x1)
 		{
 			hInfo.z = x1;
-			hInfo.p = ray.p + x1 * ray.dir;
+			hInfo.p = rays.ray.p + x1 * rays.ray.dir;
 			hInfo.N = -hInfo.p;
 			hInfo.front = true;
 			status = true;
@@ -58,7 +59,7 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 		else if (x2 < x1 && hInfo.z > x2 && x2 > BIAS)
 		{
 			hInfo.z = x2;
-			hInfo.p = ray.p + x2 * ray.dir;
+			hInfo.p = rays.ray.p + x2 * rays.ray.dir;
 			hInfo.N = -hInfo.p;
 			hInfo.front = true;
 			status = true;
@@ -68,14 +69,14 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 		if (x1 > x2 && hInfo.z > x1 && x1 > BIAS)
 		{
 			hInfo.z = x1;
-			hInfo.p = ray.p + x1 * ray.dir;
+			hInfo.p = rays.ray.p + x1 * rays.ray.dir;
 			hInfo.front = false;
 			status = true;
 		}
 		else if (x2 > x1 && hInfo.z > x2 && x2 > BIAS)
 		{
 			hInfo.z = x2;
-			hInfo.p = ray.p + x2 * ray.dir;
+			hInfo.p = rays.ray.p + x2 * rays.ray.dir;
 			hInfo.front = false;
 			status = true;
 		}
@@ -84,7 +85,7 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 		if (hInfo.z > x1 && x1 > BIAS)
 		{
 			hInfo.z = x1;
-			hInfo.p = ray.p + x1 * ray.dir;
+			hInfo.p = rays.ray.p + x1 * rays.ray.dir;
 			hInfo.N = -hInfo.p;
 			if (x1 < x2)
 				hInfo.front = true;
@@ -95,7 +96,7 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 		if (hInfo.z > x2 && x2 > BIAS)
 		{
 			hInfo.z = x2;
-			hInfo.p = ray.p + x2 * ray.dir;
+			hInfo.p = rays.ray.p + x2 * rays.ray.dir;
 			hInfo.N = -hInfo.p;
 			if (x2 < x1)
 				hInfo.front = true;
@@ -105,32 +106,63 @@ bool Sphere::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const
 		}
 	}
 
+	if (status)
+	{
+		float u = 0.5 - atan2(hInfo.p.x, hInfo.p.y) / (2 * pi);
+		float v = 0.5 + asin(hInfo.p.z) / pi;
+		hInfo.uvw = Point3(u, v, 0);
+	}
 	return status;
 
 }
 
 //Assuming axis alligned to z. Hit point is givem by p+td = q; in z axis pz + t dz = 0;
-bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
+bool Plane::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) const {
 	float pz, dz, t;
 	Point3 hP;
-	pz = ray.p.z;
-	dz = ray.dir.z;
+	pz = rays.ray.p.z;
+	dz = rays.ray.dir.z;
 
 	if (dz == 0)
 		return false;
 
 	t = -(pz / dz);
 	if (t < hInfo.z && t > BIAS) {
-		hP = ray.p + t * ray.dir;
+		hP = rays.ray.p + t * rays.ray.dir;
 		if (fabs(hP.x) < 1 && fabs(hP.y) < 1)
 		{
 			hInfo.z = t;
-			if (ray.dir.Dot(Point3(0, 0, 1)) > 0)
+			if (rays.ray.dir.Dot(Point3(0, 0, 1)) > 0)
 				hInfo.N = Point3(0, 0, 1);
 			else
 				hInfo.N = Point3(0, 0, -1);
 
 			hInfo.p = hP;
+			hInfo.uvw = Point3((hInfo.p.x + 1) / 2, (hInfo.p.y + 1) / 2, 0);
+			// ray differential sampling
+			//{
+				float pxz, dxz, tx = BIGFLOAT, pyz, dyz, ty = BIGFLOAT;
+				Point3 hPx, hPy;
+				pxz = rays.difx.p.z;
+				dxz = rays.dify.dir.z;
+				
+				if (dxz != 0) {
+					tx = -(pxz / dxz);
+					hPx = rays.difx.p + tx * rays.difx.dir;
+				}
+
+				pyz = rays.dify.p.z;
+				dyz = rays.dify.dir.z;
+				
+				if (dyz != 0) {
+					ty = -(pyz / dyz);
+					hPy = rays.dify.p + ty * rays.dify.dir;
+				}
+
+				hInfo.duvw[0] = (hPx - hP);
+				hInfo.duvw[1] = (hPy - hP);
+			//}
+
 			return true;
 		}
 	}
@@ -139,7 +171,7 @@ bool Plane::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 
 //assume box is axis aligned
 //check if ray is aligned to any of the axis and then do ray plane interaction with the remaining faces.'
-bool Box::IntersectRay(const Ray &r, float t_max) const {
+bool Box::IntersectRay(const DifRays &r, float t_max) const {
 	
 	bool intersectStatus = false;
 	if (IsEmpty())
@@ -150,12 +182,12 @@ bool Box::IntersectRay(const Ray &r, float t_max) const {
 
 	float dirInv = 0;
 
-	if (r.dir.x != 0)
+	if (r.ray.dir.x != 0)
 	{
-		dirInv = 1.0f / r.dir.x;
+		dirInv = 1.0f / r.ray.dir.x;
 		
-		val1 = (pmin.x - r.p.x) * dirInv;
-		val2 = (pmax.x - r.p.x) * dirInv;
+		val1 = (pmin.x - r.ray.p.x) * dirInv;
+		val2 = (pmax.x - r.ray.p.x) * dirInv;
 
 		x0 = min(val1, val2);
 		x1 = max(val1, val2);
@@ -165,12 +197,12 @@ bool Box::IntersectRay(const Ray &r, float t_max) const {
 
 		intersectStatus = true;
 	}
-	if (r.dir.y != 0)
+	if (r.ray.dir.y != 0)
 	{
-		dirInv = 1.0f / r.dir.y;
+		dirInv = 1.0f / r.ray.dir.y;
 
-		val1 = (pmin.y - r.p.y) * dirInv;
-		val2 = (pmax.y - r.p.y) * dirInv;
+		val1 = (pmin.y - r.ray.p.y) * dirInv;
+		val2 = (pmax.y - r.ray.p.y) * dirInv;
 
 		y0 = min(val1, val2);
 		y1 = max(val1, val2);
@@ -183,12 +215,12 @@ bool Box::IntersectRay(const Ray &r, float t_max) const {
 
 		intersectStatus = true;
 	}
-	if (r.dir.z != 0)
+	if (r.ray.dir.z != 0)
 	{
-		dirInv = 1.0f / r.dir.z;
+		dirInv = 1.0f / r.ray.dir.z;
 
-		val1 = (pmin.z - r.p.z) * dirInv;
-		val2 = (pmax.z - r.p.z) * dirInv;
+		val1 = (pmin.z - r.ray.p.z) * dirInv;
+		val2 = (pmax.z - r.ray.p.z) * dirInv;
 
 		z0 = min(val1, val2);
 		z1 = max(val1, val2);
@@ -218,7 +250,7 @@ unsigned int pop(std::vector<unsigned int>& stack) {
 	return i;
 }
 
-bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
+bool TriObj::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) const {
 
 	bool status = false;
 	Box boundingBox = GetBoundBox();
@@ -231,7 +263,7 @@ bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 		if (!bvh.IsLeafNode(nodeID = pop(stack)))
 		{
 			boundingBox = bvh.GetNodeBounds(nodeID);
-			if (boundingBox.IntersectRay(ray, hInfo.z))
+			if (boundingBox.IntersectRay(rays, hInfo.z))
 			{
 				bvh.GetChildNodes(nodeID, child1, child2);
 				stack.push_back(child2), stack.push_back(child1);
@@ -239,8 +271,8 @@ bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 		}
 		else {
 			boundingBox = bvh.GetNodeBounds(nodeID);
-			if (boundingBox.IntersectRay(ray, hInfo.z))
-				if (TraceBVHNode(ray, hInfo, hitSide, nodeID))
+			if (boundingBox.IntersectRay(rays, hInfo.z))
+				if (TraceBVHNode(rays, hInfo, hitSide, nodeID))
 					status = true;
 		}
 	}
@@ -248,7 +280,7 @@ bool TriObj::IntersectRay(const Ray &ray, HitInfo &hInfo, int hitSide) const {
 	return status;
 }
 
-bool TriObj::TraceBVHNode(const Ray &ray, HitInfo &hInfo, int hitSide, unsigned int nodeID) const
+bool TriObj::TraceBVHNode(const DifRays &rays, HitInfo &hInfo, int hitSide, unsigned int nodeID) const
 {
 	bool status = false;
 	int count = bvh.GetNodeElementCount(nodeID);
@@ -256,7 +288,7 @@ bool TriObj::TraceBVHNode(const Ray &ray, HitInfo &hInfo, int hitSide, unsigned 
 	for (int i = 0; i < count; i++)
 	{
 		float z = hInfo.z;
-		if (IntersectTriangle(ray, hInfo, hitSide, list[i]))
+		if (IntersectTriangle(rays, hInfo, hitSide, list[i]))
 		{
 			if (z > hInfo.z)
 				status = true;
@@ -265,7 +297,7 @@ bool TriObj::TraceBVHNode(const Ray &ray, HitInfo &hInfo, int hitSide, unsigned 
 	return status;
 }
 
-bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsigned int faceID) const
+bool TriObj::IntersectTriangle(const DifRays &rays, HitInfo &hInfo, int hitSide, unsigned int faceID) const
 {
 	float t = BIGFLOAT;
 	Point3 vertexA, vertexB, vertexC, triNormal, hitPoint;
@@ -280,22 +312,22 @@ bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsi
 	
 	if (hitSide == HIT_BACK)
 	{
-		if (ray.dir.Dot(triNormal) < 0)
+		if (rays.ray.dir.Dot(triNormal) < 0)
 			return false;
 	}
 	if (hitSide == HIT_FRONT)
 	{
-		if (ray.dir.Dot(triNormal) > 0)
+		if (rays.ray.dir.Dot(triNormal) > 0)
 			return false;
 	}
 
 	//t = (d - n.P)/n.D; d = n.x (x - any point on triangle eg. A => d = n.A); t = (n.A - n.P)/n.D;
-	if (ray.dir.Dot(triNormal) != 0)
-		t = (triNormal.Dot(vertexA) - (triNormal.Dot(ray.p))) / triNormal.Dot(ray.dir);
+	if (rays.ray.dir.Dot(triNormal) != 0)
+		t = (triNormal.Dot(vertexA) - (triNormal.Dot(rays.ray.p))) / triNormal.Dot(rays.ray.dir);
 
 	if (t < hInfo.z && t > BIAS)
 	{
-		hitPoint = ray.p + t * ray.dir;
+		hitPoint = rays.ray.p + t * rays.ray.dir;
 
 		//projecting everything into 2d in order to optimize the calculation
 		Point2 vertA2d, vertB2d, vertC2d, triNUnNorm2d, triNormal2d, hitPoint2d;
@@ -336,10 +368,32 @@ bool TriObj::IntersectTriangle(const Ray &ray, HitInfo &hInfo, int hitSide, unsi
 			hInfo.z = t;
 			Point3 intrapolatedNormal = GetNormal(faceID, Point3(alpha, beta, gamma));
 			intrapolatedNormal.Normalize();
-			if (ray.dir.Dot(intrapolatedNormal) > 0)
+			if (rays.ray.dir.Dot(intrapolatedNormal) > 0)
 				hInfo.N = intrapolatedNormal;
 			else
 				hInfo.N = -intrapolatedNormal;
+
+			hInfo.uvw = GetTexCoord(faceID, Point3(alpha, beta, gamma));
+			// ray differential sampling
+			{
+				float tx = BIGFLOAT, ty = BIGFLOAT;
+				Point3 hitPointx, hitPointy, dx, dy;
+
+				if (rays.difx.dir.Dot(triNormal) != 0)
+					tx = (triNormal.Dot(vertexA) - (triNormal.Dot(rays.difx.p))) / triNormal.Dot(rays.difx.dir);
+
+				if (rays.dify.dir.Dot(triNormal) != 0)
+					ty = (triNormal.Dot(vertexA) - (triNormal.Dot(rays.dify.p))) / triNormal.Dot(rays.dify.dir);
+
+				hitPointx = rays.difx.p + tx * rays.difx.dir;
+				hitPointy = rays.dify.p + ty * rays.dify.dir;
+				dx = hitPointx - hitPoint;
+				dy = hitPointy - hitPoint;
+
+				hInfo.duvw[0] = dx / 2;
+				hInfo.duvw[1] = dy / 2;
+			}
+			hInfo.mtlID = GetMaterialIndex(faceID);
 			return true;
 		}
 	}
