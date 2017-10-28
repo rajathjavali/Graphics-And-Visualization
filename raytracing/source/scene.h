@@ -1,10 +1,9 @@
-
 //-------------------------------------------------------------------------------
 ///
 /// \file       scene.h 
 /// \author     Cem Yuksel (www.cemyuksel.com)
-/// \version    7.0
-/// \date       October 2, 2017
+/// \version    8.0
+/// \date       October 16, 2017
 ///
 /// \brief Example source for CS 6620 - University of Utah.
 ///
@@ -54,9 +53,9 @@ typedef unsigned char uchar;
 #endif
 
 #define BIGFLOAT 1.0e30f
-
 void Init();
 void Trace(int i, int j);
+
 //-------------------------------------------------------------------------------
 
 class Ray
@@ -73,13 +72,15 @@ public:
 //-------------------------------------------------------------------------------
 
 struct DifRays {
-	Ray ray, difx, dify;
-	DifRays() {};
-	DifRays(const Point3 &_p, const Point3 &_dir) : ray(_p, _dir) {};
-	DifRays(const Point3 &_p, const Point3 &_dir1, const Point3 &_dir2, const Point3 &_dir3) : ray(_p, _dir1), difx(_p, _dir2), dify(_p, _dir3) {};
+	Ray ray, difcenter, difx, dify;
+	bool status;
+	DifRays() : status(false) {};
+	DifRays(const Point3 &_p, const Point3 &_dir) : ray(_p, _dir), status(false) {};
+	DifRays(const Point3 &_p, const Point3 &_dir, const Point3 &_dir1, const Point3 &_dir2, const Point3 &_dir3) : ray(_p, _dir), difcenter(_p, _dir1), difx(_p, _dir2), dify(_p, _dir3), status(true) {};
 };
 
 //-------------------------------------------------------------------------------
+
 class Box
 {
 public:
@@ -135,6 +136,19 @@ public:
 	// Returns true if the ray intersects with the box for any parameter that is smaller than t_max; otherwise, returns false.
 	bool IntersectRay(const DifRays &r, float t_max) const;
 };
+
+//-------------------------------------------------------------------------------
+
+inline float Halton(int index, int base)
+{
+	float r = 0;
+	float f = 1.0f / (float)base;
+	for (int i = index; i>0; i /= base) {
+		r += f * (i%base);
+		f /= (float)base;
+	}
+	return r;
+}
 
 //-------------------------------------------------------------------------------
 
@@ -322,9 +336,8 @@ public:
 		Color c = Sample(uvw);
 		if (duvw[0].LengthSquared() + duvw[1].LengthSquared() == 0) return c;
 		for (int i = 1; i<TEXTURE_SAMPLE_COUNT; i++) {
-			float x = 0, y = 0, fx = 0.5f, fy = 1.0f / 3.0f;
-			for (int ix = i; ix>0; ix /= 2) { x += fx*(ix % 2); fx /= 2; }   // Halton sequence (base 2)
-			for (int iy = i; iy>0; iy /= 3) { y += fy*(iy % 3); fy /= 3; }   // Halton sequence (base 3)
+			float x = Halton(i, 2);
+			float y = Halton(i, 3);
 			if (elliptic) {
 				float r = sqrtf(x)*0.5f;
 				x = r*sinf(y*(float)M_PI * 2);
@@ -417,9 +430,8 @@ public:
 	Color SampleEnvironment(const Point3 &dir) const
 	{
 		float z = asinf(-dir.z) / float(M_PI) + 0.5f;
-		float den = sqrtf(dir.x*dir.x + dir.y*dir.y) + 1e-10f;
-		float x = dir.x / den;
-		float y = dir.y / den;
+		float x = dir.x / (fabs(dir.x) + fabs(dir.y));
+		float y = dir.y / (fabs(dir.x) + fabs(dir.y));
 		return Sample(Point3(0.5f, 0.5f, 0.0f) + z*(x*Point3(0.5f, 0.5f, 0) + y*Point3(-0.5f, 0.5f, 0)));
 	}
 
@@ -533,6 +545,8 @@ private:
 	Color24 *img;
 	float   *zbuffer;
 	uchar   *zbufferImg;
+	uchar   *sampleCount;
+	uchar   *sampleCountImg;
 	int     width, height;
 	std::atomic<int> numRenderedPixels;
 public:
@@ -547,6 +561,10 @@ public:
 		zbuffer = new float[width*height];
 		if (zbufferImg) delete[] zbufferImg;
 		zbufferImg = NULL;
+		if (sampleCount) delete[] sampleCount;
+		sampleCount = new uchar[width*height];;
+		if (sampleCountImg) delete[] sampleCountImg;
+		sampleCountImg = NULL;
 		ResetNumRenderedPixels();
 	}
 
@@ -555,6 +573,8 @@ public:
 	Color24*    GetPixels() { return img; }
 	float*      GetZBuffer() { return zbuffer; }
 	uchar*      GetZBufferImage() { return zbufferImg; }
+	uchar*      GetSampleCount() { return sampleCount; }
+	uchar*      GetSampleCountImage() { return sampleCountImg; }
 
 	void    ResetNumRenderedPixels() { numRenderedPixels = 0; }
 	int     GetNumRenderedPixels() const { return numRenderedPixels; }
@@ -585,10 +605,36 @@ public:
 		}
 	}
 
+	int ComputeSampleCountImage()
+	{
+		int size = width * height;
+		if (sampleCountImg) delete[] sampleCountImg;
+		sampleCountImg = new uchar[size];
+
+		uchar smin = 255, smax = 0;
+		for (int i = 0; i<size; i++) {
+			if (smin > sampleCount[i]) smin = sampleCount[i];
+			if (smax < sampleCount[i]) smax = sampleCount[i];
+		}
+		if (smax == smin) {
+			for (int i = 0; i<size; i++) sampleCountImg[i] = 0;
+		}
+		else {
+			for (int i = 0; i<size; i++) {
+				int c = (255 * (sampleCount[i] - smin)) / (smax - smin);
+				if (c < 0) c = 0;
+				if (c > 255) c = 255;
+				sampleCountImg[i] = c;
+			}
+		}
+		return smax;
+	}
+
 	bool SaveImage(const char *filename) const { return SavePNG(filename, &img[0].r, 3); }
 	bool SaveZImage(const char *filename) const { return SavePNG(filename, zbufferImg, 1); }
+	bool SaveSampleCountImage(const char *filename) const { return SavePNG(filename, sampleCountImg, 1); }
 
-private:
+public:
 	bool SavePNG(const char *filename, uchar *data, int compCount) const
 	{
 		LodePNGColorType colortype;

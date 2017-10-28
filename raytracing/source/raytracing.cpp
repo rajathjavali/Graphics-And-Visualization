@@ -21,10 +21,17 @@ using namespace tbb;
 
 #define PI 3.1415
 #define CAM_TO_IMG_DIST 1 // later gets changed, distance of img plane from the camera
-#define IMG_NAME "prj7_sampling.jpg"
-#define Z_IMG_NAME "prj7_z.jpg"
-#define RESOURCE_NAME "resource\\scene_prj7.xml" 
-//scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml, scene_prj4.xml, Cornell_Box_Scene.xml, example_box_tri_obj.xml, helicopter.xml
+#define IMG_NAME "prj8.jpg"//"images/prj8/Adaptive 8-32SPP Texture Filtering Ve-2.jpg"
+#define Z_IMG_NAME "prj8wolf_z.jpg"
+#define SAMPLE_MAP "wolfsample"//"images/prj8/Adaptive 8-32SPP Texture Filtering Ve-2 Sampling.jpg"
+#define RESOURCE_NAME "resource\\wolf.xml"
+#define MIN_SAMPLES 8
+#define MAX_SAMPLES 32
+#define RAY_DIFFERENTIAL true
+#define VARIANCE 0.001
+#define ADAPTIVE true
+
+//scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml, scene_prj4.xml, Cornell_Box_Scene.xml, example_box_tri_obj.xml, helicopter.xml, test_proj8.xml
 
 Node rootNode;
 Camera camera;
@@ -39,6 +46,7 @@ TextureList textureList;
 Point3 u, v, startingPoint;
 float *distanceBuffer;
 Color24 *pixelArray;
+float *numRay;
 
 extern void ShowViewport();
 extern int LoadScene(const char *filename);
@@ -54,7 +62,7 @@ void Init()
 	v = camera.dir ^ u; // v vector in -y direction
 	int imgSize = renderImage.GetWidth() * renderImage.GetHeight();
 	pixelArray = renderImage.GetPixels();
-
+	numRay = new float[800 * 600];
 	float heightOfImgPlane = 2 * tan((camera.fov / 2) * PI / 180.0f) * CAM_TO_IMG_DIST;
 	float pixelSize = heightOfImgPlane / camera.imgHeight;
 	distanceBuffer = renderImage.GetZBuffer();
@@ -72,7 +80,7 @@ int main()
 {
 	LoadScene(RESOURCE_NAME);
 
-	std::thread *th = new std::thread(ShowViewport);
+	std::thread(ShowViewport).detach();
 	
 	printf("Enter a key to exit\n");
 	while (getchar())
@@ -100,42 +108,92 @@ void BeginRender()
 	renderImage.SaveImage(IMG_NAME);
 	renderImage.ComputeZBufferImage();
 	renderImage.SaveZImage(Z_IMG_NAME);
+	
+	if (ADAPTIVE)
+	{
+		uchar *numberRayImg = NULL;
+		int size = 800 * 600;
+		if (numberRayImg) delete[] numberRayImg;
+		numberRayImg = new uchar[size];
+
+		float zmin = MIN_SAMPLES, zmax = MAX_SAMPLES;
+		for (int i = 0; i < size; i++) {
+			if (numRay[i] == BIGFLOAT) numRay[i] = 0;
+			else {
+				float f = 1 - (zmax - numRay[i]) / (zmax - zmin);
+				int c = int(f * 255);
+				if (c < 0) c = 0;
+				if (c > 255) c = 255;
+				numberRayImg[i] = c;
+			}
+		}
+		renderImage.SavePNG(SAMPLE_MAP, numberRayImg, 1);
+	}
 }
 
 void Trace(int i, int j) {
-	Point3 pixel_center_ij = startingPoint + (i + 0.5) * u + (j + 0.5) * v;
-	Point3 dir = pixel_center_ij - camera.pos;
-	Point3 dirx = startingPoint + (i + 1) * u + (j + 0.5) * v - camera.pos;
-	Point3 diry = startingPoint + (i + 0.5) * u + j * v - camera.pos;
-
-	Color pixelColour;
+	//Halton(int index, int base);
+	Point3 dircenter, dirx, diry, pixel_center_ij, subpixel, antialiasingRayDir;
+	
+	Color pixelColour, sqColor, variance, rayColor, avgColor;
 	pixelColour.SetBlack();
-
-	DifRays rays(camera.pos, dir, dirx, diry);
+	sqColor.SetBlack();
+	variance.SetBlack();
+	rayColor.SetBlack();
+	avgColor.SetBlack();
 
 	int pixelIndexInImg = j * camera.imgWidth + i;
 	distanceBuffer[pixelIndexInImg] = BIGFLOAT;
-	HitInfo hit_info;
+	numRay[pixelIndexInImg] = BIGFLOAT;
+	int countRay = 1;
+	float valx = 0, valy = 0;
 
-	if (traceNode(&rootNode, rays, hit_info, HIT_FRONT))
-	{
-		distanceBuffer[pixelIndexInImg] = hit_info.z;
-		pixelColour = hit_info.node->GetMaterial()->Shade(rays, hit_info, lights, 4);
-		pixelArray[pixelIndexInImg].r = pixelColour.r * 255;
-		pixelArray[pixelIndexInImg].b = pixelColour.b * 255;
-		pixelArray[pixelIndexInImg].g = pixelColour.g * 255;
-	}
-	else
-	{
-		float heightOfImgPlane = 2 * tan((camera.fov / 2) * PI / 180.0f) * CAM_TO_IMG_DIST;
-		float pixelSize = heightOfImgPlane / camera.imgHeight;
-		float widthOfImgPlane = pixelSize * camera.imgWidth;
-		Point3 textureCoord = Point3((float)i/camera.imgWidth, (float)j/camera.imgHeight, 0);
-		//textureCoord.Normalize();
-		Color backgnd = background.Sample(textureCoord);
-		pixelArray[pixelIndexInImg].r = backgnd.r * 255;
-		pixelArray[pixelIndexInImg].g = backgnd.g * 255;
-		pixelArray[pixelIndexInImg].b = backgnd.b * 255;
+	while (countRay <= MAX_SAMPLES) {
+		valx = Halton(countRay, 2); // Halton sequence base 2
+		valy = Halton(countRay, 3); // Halton sequence base 3
+		subpixel = startingPoint + (i + valx) * u + (j + valy) * v;
+		DifRays rays;
+
+		antialiasingRayDir = subpixel - camera.pos;
+		if (/*countRay <= 8 &&*/ RAY_DIFFERENTIAL)
+		{
+			pixel_center_ij = startingPoint + (i + 0.5) * u + (j + 0.5) * v;
+			dircenter = pixel_center_ij - camera.pos;
+			dirx = startingPoint + (i + 1) * u + (j + 0.5) * v - camera.pos;
+			diry = startingPoint + (i + 0.5) * u + j * v - camera.pos;
+
+			rays = DifRays(camera.pos, antialiasingRayDir, dircenter, dirx, diry);
+		}
+		else
+			rays = DifRays(camera.pos, antialiasingRayDir);
+
+		HitInfo hit_info;
+
+		if (traceNode(&rootNode, rays, hit_info, HIT_FRONT))
+		{
+			if(distanceBuffer[pixelIndexInImg] > hit_info.z)
+				distanceBuffer[pixelIndexInImg] = hit_info.z;
+			rayColor = hit_info.node->GetMaterial()->Shade(rays, hit_info, lights, 4);
+		}
+		else
+		{
+			Point3 textureCoord = Point3((float)i / camera.imgWidth, (float)j / camera.imgHeight, 0);
+			rayColor = background.Sample(textureCoord);
+		}
+
+		sqColor += rayColor * rayColor;
+		pixelColour += rayColor;
+		avgColor = pixelColour / countRay;
+		variance = (sqColor / countRay) - (avgColor * avgColor);
+		
+		pixelArray[pixelIndexInImg] = Color24(avgColor);
+		numRay[pixelIndexInImg] = countRay;
+
+		if (ADAPTIVE) {
+			if (countRay >= MIN_SAMPLES && variance.r < VARIANCE && variance.b < VARIANCE && variance.g < VARIANCE)
+				break;
+		}		
+		countRay++;
 	}
 }
 
@@ -194,11 +252,13 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 		refractedColor(0, 0, 0),
 		totalReflection = reflection.GetColor();
 
-	Point3 Hi, HiX, HiY, surfaceNormal = hInfo.N.GetNormalized();
-	Point3 viewDir = rays.ray.dir.GetNormalized();
-	Point3 viewDirX = rays.difx.dir.GetNormalized();
-	Point3 viewDirY = rays.dify.dir.GetNormalized();
-
+	Point3 Hi, HiX, HiY, HiCent, surfaceNormal = hInfo.N.GetNormalized();
+	Point3 viewDirCenter, viewDirX, viewDirY, viewDir = rays.ray.dir.GetNormalized();
+	if (rays.status) {
+		viewDirCenter = rays.difcenter.dir.GetNormalized();
+		viewDirX = rays.difx.dir.GetNormalized();
+		viewDirY = rays.dify.dir.GetNormalized();
+	}
 	float cosi, sini, sint, cost;
 
 	for (int i = 0; i < lights.size(); i++)
@@ -215,13 +275,20 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 
 
 		Hi = (lDir + viewDir).GetNormalized(); // half vector
-		HiX = (lDir + viewDirX).GetNormalized();
-		HiY = (lDir + viewDirY).GetNormalized();
+		if (rays.status)
+		{
+			HiCent = (lDir + viewDirCenter).GetNormalized();
+			HiX = (lDir + viewDirX).GetNormalized();
+			HiY = (lDir + viewDirY).GetNormalized();
 
-		//color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse.Sample(hInfo.uvw) + specular.Sample(hInfo.uvw) *  pow(fmax(0, surfaceNormal.Dot(Hi)), glossiness));
-		color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse.Sample(hInfo.uvw, hInfo.duvw, true) + specular.Sample(hInfo.uvw, hInfo.duvw, true) 
-							 *  ((pow(fmax(0, surfaceNormal.Dot(HiX)), glossiness) + pow(fmax(0, surfaceNormal.Dot(HiX)), glossiness) + pow(fmax(0, surfaceNormal.Dot(HiY)), glossiness)) / 3));
+			color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse.Sample(hInfo.uvw, hInfo.duvw, true) + specular.Sample(hInfo.uvw, hInfo.duvw, true)
+				*  ((pow(fmax(0, surfaceNormal.Dot(HiCent)), glossiness) + pow(fmax(0, surfaceNormal.Dot(HiX)), glossiness) + pow(fmax(0, surfaceNormal.Dot(HiY)), glossiness)) / 3));
+
+		}
+		else
+			color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse.Sample(hInfo.uvw) + specular.Sample(hInfo.uvw) *  pow(fmax(0, surfaceNormal.Dot(Hi)), glossiness));
 	}
+
 	if (refraction.GetColor() != Color(0, 0, 0))
 	{
 		cosi = surfaceNormal.Dot(viewDir);
@@ -235,10 +302,17 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 			if (sint > 1)
 			{
 				Point3 rayDir = (-2 * surfaceNormal * (surfaceNormal.Dot(viewDir)) + viewDir).GetNormalized();
-				Point3 rayDirX = (-2 * surfaceNormal * (surfaceNormal.Dot(viewDirX)) + viewDirX).GetNormalized();
-				Point3 rayDirY = (-2 * surfaceNormal * (surfaceNormal.Dot(viewDirY)) + viewDirY).GetNormalized();
+				DifRays totalReflectedRay;
+				if (rays.status)
+				{
+					Point3 rayDirCent = (-2 * surfaceNormal * (surfaceNormal.Dot(viewDirCenter)) + viewDirCenter).GetNormalized();
+					Point3 rayDirX = (-2 * surfaceNormal * (surfaceNormal.Dot(viewDirX)) + viewDirX).GetNormalized();
+					Point3 rayDirY = (-2 * surfaceNormal * (surfaceNormal.Dot(viewDirY)) + viewDirY).GetNormalized();
 
-				DifRays totalReflectedRay(hInfo.p, rayDir, rayDirX, rayDirY);
+					totalReflectedRay = DifRays(hInfo.p, rayDir, rayDirCent, rayDirX, rayDirY);
+				}
+				else
+					totalReflectedRay = DifRays(hInfo.p, rayDir);
 				if (traceNode(&rootNode, totalReflectedRay, temp, HIT_FRONT_AND_BACK))
 				{
 					absorptionCoeff.r = exp(-hInfo.z * absorption.r);
@@ -246,32 +320,47 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 					absorptionCoeff.b = exp(-hInfo.z * absorption.b);
 					refractedColor += absorptionCoeff * temp.node->GetMaterial()->Shade(totalReflectedRay, temp, lights, (bounceCount - 1));
 				}
-				else
-					//refractedColor += environment.SampleEnvironment(totalReflectedRay.ray.dir);
-					refractedColor += (environment.SampleEnvironment(totalReflectedRay.ray.dir) + environment.SampleEnvironment(totalReflectedRay.difx.dir) + environment.SampleEnvironment(totalReflectedRay.dify.dir)) / 3;
+				else {
+					if(!totalReflectedRay.status)
+					refractedColor += environment.SampleEnvironment(totalReflectedRay.ray.dir);
+					else
+					refractedColor += (environment.SampleEnvironment(totalReflectedRay.difcenter.dir) + environment.SampleEnvironment(totalReflectedRay.difx.dir) + environment.SampleEnvironment(totalReflectedRay.dify.dir)) / 3;
+				}
 			}
 			else
 			{
 				cost = sqrt(1 - fmin(pow(sint, 2), 1));
 				Point3 S = (surfaceNormal.Cross(surfaceNormal.Cross(-viewDir))).GetNormalized();
 				Point3 refractedDir = (-surfaceNormal * cost + S * sint).GetNormalized();
+				DifRays refractedRay;
+				if (rays.status)
+				{
+					Point3 Scenter = (surfaceNormal.Cross(surfaceNormal.Cross(-viewDirCenter))).GetNormalized();
+					Point3 refractedDirCent = (-surfaceNormal * cost + Scenter * sint).GetNormalized();
 
-				Point3 Sx = (surfaceNormal.Cross(surfaceNormal.Cross(-viewDirX))).GetNormalized();
-				Point3 refractedDirX = (-surfaceNormal * cost + Sx * sint).GetNormalized();
+					Point3 Sx = (surfaceNormal.Cross(surfaceNormal.Cross(-viewDirX))).GetNormalized();
+					Point3 refractedDirX = (-surfaceNormal * cost + Sx * sint).GetNormalized();
 
-				Point3 Sy = (surfaceNormal.Cross(surfaceNormal.Cross(-viewDirY))).GetNormalized();
-				Point3 refractedDirY = (-surfaceNormal * cost + Sy * sint).GetNormalized();
+					Point3 Sy = (surfaceNormal.Cross(surfaceNormal.Cross(-viewDirY))).GetNormalized();
+					Point3 refractedDirY = (-surfaceNormal * cost + Sy * sint).GetNormalized();
 
-				DifRays refractedRay(hInfo.p, refractedDir, refractedDirX, refractedDirY);
+					refractedRay = DifRays(hInfo.p, refractedDir, refractedDirCent, refractedDirX, refractedDirY);
+				}
+				else
+					refractedRay = DifRays(hInfo.p, refractedDir);
+
 
 				if (traceNode(&rootNode, refractedRay, temp, HIT_FRONT_AND_BACK))
 				{
 					if (temp.front)
 						refractedColor += temp.node->GetMaterial()->Shade(refractedRay, temp, lights, (bounceCount - 1));
 				}
-				else
-					//refractedColor += environment.SampleEnvironment(refractedRay.ray.dir);
-					refractedColor += (environment.SampleEnvironment(refractedRay.ray.dir) + environment.SampleEnvironment(refractedRay.difx.dir) + environment.SampleEnvironment(refractedRay.dify.dir)) / 3;
+				else {
+					if (!refractedRay.status)
+						refractedColor += environment.SampleEnvironment(refractedRay.ray.dir);
+					else
+					refractedColor += (environment.SampleEnvironment(refractedRay.difcenter.dir) + environment.SampleEnvironment(refractedRay.difx.dir) + environment.SampleEnvironment(refractedRay.dify.dir)) / 3;
+				}
 			}
 		}
 		else
@@ -287,15 +376,23 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 			Point3 S = (surfaceNormal.Cross(surfaceNormal.Cross(viewDir))).GetNormalized();
 			Point3 refractedDir = (-1 * surfaceNormal * cost + S * sint).GetNormalized();
 			
+			DifRays refractedRay;
+			if (rays.status)
+			{
+				Point3 Scent = (surfaceNormal.Cross(surfaceNormal.Cross(viewDirCenter))).GetNormalized();
+				Point3 refractedDirCent = (-1 * surfaceNormal * cost + Scent * sint).GetNormalized();
 
-			Point3 Sx = (surfaceNormal.Cross(surfaceNormal.Cross(viewDirX))).GetNormalized();
-			Point3 refractedDirX = (-1 * surfaceNormal * cost + Sx * sint).GetNormalized();
+				Point3 Sx = (surfaceNormal.Cross(surfaceNormal.Cross(viewDirX))).GetNormalized();
+				Point3 refractedDirX = (-1 * surfaceNormal * cost + Sx * sint).GetNormalized();
 
 
-			Point3 Sy = (surfaceNormal.Cross(surfaceNormal.Cross(viewDirY))).GetNormalized();
-			Point3 refractedDirY = (-1 * surfaceNormal * cost + Sy * sint).GetNormalized();
-			
-			DifRays refractedRay(hInfo.p, -refractedDir, -refractedDirX, -refractedDirY);
+				Point3 Sy = (surfaceNormal.Cross(surfaceNormal.Cross(viewDirY))).GetNormalized();
+				Point3 refractedDirY = (-1 * surfaceNormal * cost + Sy * sint).GetNormalized();
+				refractedRay = DifRays(hInfo.p, -refractedDir, -refractedDirCent, -refractedDirX, -refractedDirY);
+			}
+			else
+				refractedRay = DifRays(hInfo.p, -refractedDir);
+
 
 			if (traceNode(&rootNode, refractedRay, temp, HIT_FRONT_AND_BACK))
 			{
@@ -307,10 +404,12 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 					refractedColor += absorptionCoeff * refractedPortion * temp.node->GetMaterial()->Shade(refractedRay, temp, lights, (bounceCount - 1));
 				}
 			}
-			else
-				//refractedColor += environment.SampleEnvironment(refractedRay.ray.dir);
+			else {
+				if(!refractedRay.status)
+				refractedColor += environment.SampleEnvironment(refractedRay.ray.dir);
+				else
 				refractedColor += (environment.SampleEnvironment(refractedRay.ray.dir) + environment.SampleEnvironment(refractedRay.difx.dir) + environment.SampleEnvironment(refractedRay.dify.dir)) / 3;
-
+			}
 		}
 		color += refraction.GetColor() * refractedColor;
 	}
@@ -320,13 +419,22 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 		Point3 rayDir = -2 * surfaceNormal * (surfaceNormal.Dot(viewDir)) + viewDir;
 		rayDir.Normalize();
 
-		Point3 rayDirX = -2 * surfaceNormal * (surfaceNormal.Dot(viewDirX)) + viewDirX;
-		rayDirX.Normalize();
+		DifRays reflectedRay;
+		if (rays.status)
+		{
+			Point3 rayDirCent = -2 * surfaceNormal * (surfaceNormal.Dot(viewDirCenter)) + viewDirCenter;
+			rayDirCent.Normalize();
 
-		Point3 rayDirY = -2 * surfaceNormal * (surfaceNormal.Dot(viewDirY)) + viewDirY;
-		rayDirY.Normalize();
-		
-		DifRays reflectedRay(hInfo.p, rayDir, rayDirX, rayDirY);
+			Point3 rayDirX = -2 * surfaceNormal * (surfaceNormal.Dot(viewDirX)) + viewDirX;
+			rayDirX.Normalize();
+
+			Point3 rayDirY = -2 * surfaceNormal * (surfaceNormal.Dot(viewDirY)) + viewDirY;
+			rayDirY.Normalize();
+
+			reflectedRay = DifRays(hInfo.p, rayDir, rayDirCent, rayDirX, rayDirY);
+		}
+		else
+			reflectedRay = DifRays(hInfo.p, rayDir);
 
 		HitInfo temp;
 		temp.z = BIGFLOAT;
@@ -334,9 +442,12 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 		if (traceNode(&rootNode, reflectedRay, temp, HIT_FRONT))
 			if (hInfo.front)
 				color += totalReflection * temp.node->GetMaterial()->Shade(reflectedRay, temp, lights, (bounceCount - 1));
-			else
-				//color += environment.SampleEnvironment(reflectedRay.ray.dir);
-				color += (environment.SampleEnvironment(reflectedRay.ray.dir) + environment.SampleEnvironment(reflectedRay.difx.dir) + environment.SampleEnvironment(reflectedRay.dify.dir)) / 3;
+			else {
+				if(!reflectedRay.status)
+				color += environment.SampleEnvironment(reflectedRay.ray.dir);
+				else
+				color += (environment.SampleEnvironment(reflectedRay.difcenter.dir) + environment.SampleEnvironment(reflectedRay.difx.dir) + environment.SampleEnvironment(reflectedRay.dify.dir)) / 3;
+			}
 	}
 	color.ClampMinMax();
 	return color;
