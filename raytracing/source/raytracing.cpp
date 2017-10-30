@@ -10,6 +10,7 @@
 #include "tbb/task_scheduler_init.h"
 #include "materials.h"
 #include "lights.h"
+#include "utility.h"
 
 #include <thread>
 #include <atomic>
@@ -20,18 +21,17 @@
 using namespace tbb;
 
 #define PI 3.1415
-#define CAM_TO_IMG_DIST 1 // later gets changed, distance of img plane from the camera
-#define IMG_NAME "prj8.jpg"//"images/prj8/Adaptive 8-32SPP Texture Filtering Ve-2.jpg"
-#define Z_IMG_NAME "prj8wolf_z.jpg"
-#define SAMPLE_MAP "wolfsample"//"images/prj8/Adaptive 8-32SPP Texture Filtering Ve-2 Sampling.jpg"
-#define RESOURCE_NAME "resource\\wolf.xml"
+#define IMG_NAME "prj9 adaptive 8-32 0.01V RayDiff.jpg"
+#define Z_IMG_NAME "prj9_z.jpg"
+#define SAMPLE_MAP "prj9SampleCount adaptive 8-32 0.01V RayDiff.jpg"
+
+//scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml, scene_prj4.xml, Cornell_Box_Scene.xml, example_box_tri_obj.xml, helicopter.xml, test_proj8.xml
+#define RESOURCE_NAME "resource\\scene_prj9.xml"
 #define MIN_SAMPLES 8
 #define MAX_SAMPLES 32
 #define RAY_DIFFERENTIAL true
-#define VARIANCE 0.001
+#define VARIANCE 0.01
 #define ADAPTIVE true
-
-//scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml, scene_prj4.xml, Cornell_Box_Scene.xml, example_box_tri_obj.xml, helicopter.xml, test_proj8.xml
 
 Node rootNode;
 Camera camera;
@@ -43,7 +43,8 @@ TexturedColor background;
 TexturedColor environment;
 TextureList textureList;
 
-Point3 u, v, startingPoint;
+Point3 vectU, vectV, u, v, startingPoint, cameraBoxStart;
+Point3 cameraPoints[5];
 float *distanceBuffer;
 Color24 *pixelArray;
 float *numRay;
@@ -58,20 +59,24 @@ void StopRender();
 
 void Init()
 {
-	u = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
-	v = camera.dir ^ u; // v vector in -y direction
+	//camera.dof = 0.5;
+	vectU = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
+	vectV = camera.dir ^ vectU; // v vector in -y direction
+
+	cameraBoxStart = camera.pos - camera.dof * vectU - camera.dof * vectV;
+
 	int imgSize = renderImage.GetWidth() * renderImage.GetHeight();
 	pixelArray = renderImage.GetPixels();
 	numRay = new float[800 * 600];
-	float heightOfImgPlane = 2 * tan((camera.fov / 2) * PI / 180.0f) * CAM_TO_IMG_DIST;
+	float heightOfImgPlane = 2 * tan((camera.fov / 2) * PI / 180.0f) * camera.focaldist;
 	float pixelSize = heightOfImgPlane / camera.imgHeight;
 	distanceBuffer = renderImage.GetZBuffer();
-
+	
 	// setting the magnitude of the vectors equivalent to pixel size	
-	u = u * pixelSize;
-	v = v * pixelSize;
+	u = vectU * pixelSize;
+	v = vectV * pixelSize;
 
-	startingPoint = camera.pos + camera.dir * CAM_TO_IMG_DIST
+	startingPoint = camera.pos + camera.dir * camera.focaldist
 		- v * (camera.imgHeight / 2) // since vector v is in -y direction and we need to go in +y direction to get to the top corner
 		- u * (camera.imgWidth / 2); // since vector u is in +x direction and we need to go in -x direction to get to the top corner
 }
@@ -145,33 +150,60 @@ void Trace(int i, int j) {
 	int pixelIndexInImg = j * camera.imgWidth + i;
 	distanceBuffer[pixelIndexInImg] = BIGFLOAT;
 	numRay[pixelIndexInImg] = BIGFLOAT;
-	int countRay = 1;
-	float valx = 0, valy = 0;
-
+	int countRay = 1, countCamP = 1;
+	float valx = 0, valy = 0, camvalx = 0, camvaly = 0;
+	float sqr = pow(camera.dof, 2);
 	while (countRay <= MAX_SAMPLES) {
+		DifRays rays;
+		bool status = false;
+		
+		//Point3 cameraPoint = cameraPoints[countRay % 2];
+		Point3 cameraPoint = camera.pos;
+
+		if(countRay != 1)
+		//picking dof point
+		do {
+			status = false;
+			camvalx = Halton(countCamP, 5); // Halton sequence base 5
+			camvaly = Halton(countCamP, 7); // Halton sequence base 7
+			float xdist = camvalx * camera.dof * 2;
+			float ydist = camvaly * camera.dof * 2;
+			Point3 newPoint = cameraBoxStart + xdist * vectU + ydist * vectV;
+
+			float dist = pow(camera.pos.x - newPoint.x, 2) + pow(camera.pos.y - newPoint.y, 2);
+			if (dist <= sqr)
+				status = true, cameraPoint = newPoint;
+
+			countCamP++;
+
+		} while (!status && countCamP < 1000);
+		
+
+		//picking subpixel position
 		valx = Halton(countRay, 2); // Halton sequence base 2
 		valy = Halton(countRay, 3); // Halton sequence base 3
-		subpixel = startingPoint + (i + valx) * u + (j + valy) * v;
-		DifRays rays;
 
-		antialiasingRayDir = subpixel - camera.pos;
+
+		subpixel = startingPoint + (i + valx) * u + (j + valy) * v;
+		antialiasingRayDir = subpixel - cameraPoint;
+
 		if (/*countRay <= 8 &&*/ RAY_DIFFERENTIAL)
 		{
 			pixel_center_ij = startingPoint + (i + 0.5) * u + (j + 0.5) * v;
-			dircenter = pixel_center_ij - camera.pos;
-			dirx = startingPoint + (i + 1) * u + (j + 0.5) * v - camera.pos;
-			diry = startingPoint + (i + 0.5) * u + j * v - camera.pos;
+			dircenter = pixel_center_ij - cameraPoint;
+			dirx = startingPoint + (i + 1) * u + (j + 0.5) * v - cameraPoint;
+			diry = startingPoint + (i + 0.5) * u + j * v - cameraPoint;
 
-			rays = DifRays(camera.pos, antialiasingRayDir, dircenter, dirx, diry);
+			rays = DifRays(cameraPoint, antialiasingRayDir, dircenter, dirx, diry);
 		}
 		else
-			rays = DifRays(camera.pos, antialiasingRayDir);
+			rays = DifRays(cameraPoint, antialiasingRayDir);
 
 		HitInfo hit_info;
 
 		if (traceNode(&rootNode, rays, hit_info, HIT_FRONT))
 		{
-			if(distanceBuffer[pixelIndexInImg] > hit_info.z)
+			if(cameraPoint == camera.pos)
 				distanceBuffer[pixelIndexInImg] = hit_info.z;
 			rayColor = hit_info.node->GetMaterial()->Shade(rays, hit_info, lights, 4);
 		}
@@ -186,15 +218,16 @@ void Trace(int i, int j) {
 		avgColor = pixelColour / countRay;
 		variance = (sqColor / countRay) - (avgColor * avgColor);
 		
-		pixelArray[pixelIndexInImg] = Color24(avgColor);
-		numRay[pixelIndexInImg] = countRay;
-
+		
 		if (ADAPTIVE) {
 			if (countRay >= MIN_SAMPLES && variance.r < VARIANCE && variance.b < VARIANCE && variance.g < VARIANCE)
 				break;
 		}		
 		countRay++;
 	}
+	pixelArray[pixelIndexInImg] = Color24(avgColor);
+	numRay[pixelIndexInImg] = countRay - 1;
+
 }
 
 bool traceNode(Node *node, DifRays &rays, HitInfo &hitInfo, int hitSide)

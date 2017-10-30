@@ -79,5 +79,7 @@
     <fov value="30"/>
     <width value="800"/>
     <height value="600"/>
+    <focaldist value="65"/>
+    <dof value="1.5"/>
   </camera>
 </xml>
