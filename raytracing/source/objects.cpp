@@ -219,8 +219,8 @@ bool Plane::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) const
 				hPx.x = fmin(1, hPx.x), hPx.y = fmin(1, hPx.y);
 				hPy.x = fmin(1, hPy.x), hPy.y = fmin(1, hPy.y);
 
-				hInfo.duvw[0] = (hPx - hP);
-				hInfo.duvw[1] = (hPy - hP);
+				hInfo.duvw[0] = (hPx - hP) * 1.5;
+				hInfo.duvw[1] = (hPy - hP) * 1.5;
 			}
 
 			return true;

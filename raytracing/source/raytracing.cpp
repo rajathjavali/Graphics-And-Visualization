@@ -20,18 +20,21 @@
 
 using namespace tbb;
 
-#define PI 3.1415
-#define IMG_NAME "prj9 adaptive 8-32 0.01V RayDiff.jpg"
+#define PI 3.141592653589793
+#define IMG_NAME "prj9.jpg"
 #define Z_IMG_NAME "prj9_z.jpg"
-#define SAMPLE_MAP "prj9SampleCount adaptive 8-32 0.01V RayDiff.jpg"
-
+#define SAMPLE_MAP "prj9SampleCount.jpg"
 //scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml, scene_prj4.xml, Cornell_Box_Scene.xml, example_box_tri_obj.xml, helicopter.xml, test_proj8.xml
 #define RESOURCE_NAME "resource\\scene_prj9.xml"
+
+
+//Settings
 #define MIN_SAMPLES 8
 #define MAX_SAMPLES 32
 #define RAY_DIFFERENTIAL true
-#define VARIANCE 0.01
+#define VARIANCE 0.001
 #define ADAPTIVE true
+#define Halton_Random_Sampling false //false uses random, true uses halton for camera ray position
 
 Node rootNode;
 Camera camera;
@@ -62,7 +65,7 @@ void Init()
 	//camera.dof = 0.5;
 	vectU = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
 	vectV = camera.dir ^ vectU; // v vector in -y direction
-
+	if(camera.dof)
 	cameraBoxStart = camera.pos - camera.dof * vectU - camera.dof * vectV;
 
 	int imgSize = renderImage.GetWidth() * renderImage.GetHeight();
@@ -157,34 +160,47 @@ void Trace(int i, int j) {
 		DifRays rays;
 		bool status = false;
 		
-		//Point3 cameraPoint = cameraPoints[countRay % 2];
 		Point3 cameraPoint = camera.pos;
+		if (camera.dof) {
+			if (countRay != 1)
+			{
+				if (!Halton_Random_Sampling)
+				{
+					float cpdVal = ((double)rand() / (RAND_MAX));
+					float r = sqrt(cpdVal) * camera.dof;
+					float theta = ((double)rand() / (RAND_MAX)) * 2 * PI;
+					camvalx = r * cos(theta);
+					camvaly = r * sin(theta);
 
-		if(countRay != 1)
-		//picking dof point
-		do {
-			status = false;
-			camvalx = Halton(countCamP, 5); // Halton sequence base 5
-			camvaly = Halton(countCamP, 7); // Halton sequence base 7
-			float xdist = camvalx * camera.dof * 2;
-			float ydist = camvaly * camera.dof * 2;
-			Point3 newPoint = cameraBoxStart + xdist * vectU + ydist * vectV;
+					cameraPoint = camera.pos + camvalx * vectU + camvaly * vectV;
+				}
+				else
+				{
+					do {
+						status = false;
+						camvalx = Halton(countCamP, 3); // Halton sequence base 5
+						camvaly = Halton(countCamP, 4); // Halton sequence base 7
+						float xdist = camvalx * camera.dof * 2;
+						float ydist = camvaly * camera.dof * 2;
+						Point3 newPoint = cameraBoxStart + xdist * vectU + ydist * vectV;
 
-			float dist = pow(camera.pos.x - newPoint.x, 2) + pow(camera.pos.y - newPoint.y, 2);
-			if (dist <= sqr)
-				status = true, cameraPoint = newPoint;
+						float dist = pow(camera.pos.x - newPoint.x, 2) + pow(camera.pos.y - newPoint.y, 2);
+						if (dist <= sqr)
+							status = true, cameraPoint = newPoint;
 
-			countCamP++;
+						countCamP++;
 
-		} while (!status && countCamP < 1000);
-		
+					} while (!status && countCamP < 1000);
+				}
+			}
+		}
 
 		//picking subpixel position
 		valx = Halton(countRay, 2); // Halton sequence base 2
 		valy = Halton(countRay, 3); // Halton sequence base 3
 
 
-		subpixel = startingPoint + (i + valx) * u + (j + valy) * v;
+		subpixel = startingPoint + (i + valx * 1.2) * u + (j + valy * 1.2) * v;
 		antialiasingRayDir = subpixel - cameraPoint;
 
 		if (/*countRay <= 8 &&*/ RAY_DIFFERENTIAL)
