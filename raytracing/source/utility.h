@@ -1,4 +1,23 @@
-#pragma once
+#ifndef _UTILITY_H_
+#define _UTILITY_H_
+
+
+
+#define IMG_NAME "prj11Cornell.jpg"
+#define Z_IMG_NAME "prj11Cornell_z.jpg"
+#define SAMPLE_MAP "prj11SampleCornell.jpg"
+#define RESOURCE_NAME "resource\\CornellBox.xml"
+//scene_prj2.xml, simple_box_scene.xml, scene_prj3.xml, scene_prj4.xml, Cornell_Box_Scene.xml, example_box_tri_obj.xml, helicopter.xml, test_proj8.xml, warrior_scene_prj10.xml
+//#define IMG_NAME "prj11teapot.jpg"
+//#define Z_IMG_NAME "prj11teapot_z.jpg"
+//#define SAMPLE_MAP "prj11Sampleteapot.jpg"
+//#define RESOURCE_NAME "resource\\SkylightTeapot.xml"
+
+//#define IMG_NAME "prj8.jpg"
+//#define Z_IMG_NAME "prj8_z.jpg"
+//#define SAMPLE_MAP "prj8Sample.jpg"
+//#define RESOURCE_NAME "resource\\scene_prj7.xml"
+
 
 #define PI 3.141592653589793
 #define MIN_SAMPLES 8
@@ -13,8 +32,27 @@
 #define GI_MAX_RAYS 10
 #define GI_MIN_RAYS 1
 
+
+Node rootNode;
+Camera camera;
+RenderImage renderImage;
+MaterialList materials;
+LightList lights;
+ObjFileList objList;
+TexturedColor background;
+TexturedColor environment;
+TextureList textureList;
+
 void Init();
 void Trace(int i, int j);
+extern void ShowViewport();
+extern int LoadScene(const char *filename);
+void BeginRender();
+void StopRender();
+bool traceNode(Node *node, DifRays &ray, HitInfo &hitInfo, int hitSide);
+Color computeGlobalIllumination(const Point3 &p, const Point3 &N, int bounceCount);
+
+// ------------------------------------------------------------------ HALTON NORMAL FOR GLOSSY SURFACE ------------------------------------------
 
 Point3 getHaltonNormal(float radius, HitInfo hInfo, int raySampleCount)
 {
@@ -45,3 +83,78 @@ Point3 getHaltonNormal(float radius, HitInfo hInfo, int raySampleCount)
 
 	return newNormal;
 }
+
+// ----------------------------------------------------------------------------- LIGHT ILLUMINATE OVERRIDE ------------------------------------------------------------------------------------------------
+Color GILight::Illuminate(const Point3 &p, const Point3 &N) const
+{
+	return computeGlobalIllumination(p, N, MAX_RAY_BOUNCE_COUNT);
+}
+
+Color PointLight::Illuminate(const Point3 &p, const Point3 &N) const
+{
+	if (size && SHADOW_SAMPLING) {
+		Point3 xAxis = Point3(1, 0, 0), yAxis = Point3(0, 1, 0), zAxis(0, 0, 1);
+		float x, y, z;
+		int countRay = 0, MaxRays = 8, nonShadow = 0, shadow = 0;
+		bool status = false, fullSample = false;
+		float normalR, normalTheta, normalPhi, cpdVal;
+
+		while (countRay <= MaxRays) {
+			cpdVal = ((double)rand() / (RAND_MAX));
+			normalR = sqrt(cpdVal) * size;
+			normalTheta = ((double)rand() / (RAND_MAX)) * 2 * PI;
+			normalPhi = ((double)rand() / (RAND_MAX)) * 4 * PI;
+			x = normalR * sin(normalTheta) * cos(normalPhi);
+			y = normalR * sin(normalTheta) * sin(normalPhi);
+			z = normalR * cos(normalTheta);
+
+			Point3 li8Point = position + x * xAxis + y * yAxis + z * zAxis;
+			Point3 newDir = li8Point - p;
+
+			float val = Shadow(DifRays(p, newDir), 1);
+
+			if (val == 1)
+				nonShadow++;
+			else
+				shadow++;
+
+			if (countRay == MaxRays)
+			{
+				if (!fullSample)
+				{
+					if (nonShadow + shadow == MaxRays && nonShadow != MaxRays && shadow != MaxRays)
+					{
+						MaxRays = 64;
+						continue;
+					}
+				}
+				return (float)nonShadow / MaxRays * intensity;
+			}
+			countRay++;
+		}
+	}
+
+	return Shadow(DifRays(p, position - p), 1) * intensity;
+};
+
+
+// ----------------------------------------------------------------------------- SHADOW FINDING FUNCTION ------------------------------------------------------------------------------------------------
+float GenLight::Shadow(DifRays rays, float t_max)
+{
+	HitInfo hitInfo;
+	hitInfo.z = t_max;
+	if (t_max == 1) {
+		float dist = sqrt(rays.ray.dir.Dot(rays.ray.dir));
+		hitInfo.z = dist;
+	}
+	rays.ray.Normalize();
+	if (traceNode(&rootNode, rays, hitInfo, HIT_FRONT_AND_BACK))
+		return 0;
+	return 1;
+}
+
+// ----------------------------------------------------------------------------- STOP RENDERING ------------------------------------------------------------------------------------------------
+void StopRender()
+{}
+
+#endif
