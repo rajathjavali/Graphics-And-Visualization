@@ -20,7 +20,7 @@
 
 using namespace tbb;
 
-
+#define PI 3.141592653589793
 //#define IMG_NAME "prj11Cornell.jpg"
 //#define Z_IMG_NAME "prj11Cornell_z.jpg"
 //#define SAMPLE_MAP "prj11SampleCornell.jpg"
@@ -31,10 +31,18 @@ using namespace tbb;
 #define SAMPLE_MAP "prj11Sampleteapot.jpg"
 #define RESOURCE_NAME "resource\\SkylightTeapot.xml"
 
-//#define IMG_NAME "prj8.jpg"
-//#define Z_IMG_NAME "prj8_z.jpg"
-//#define SAMPLE_MAP "prj8Sample.jpg"
-//#define RESOURCE_NAME "resource\\scene_prj7.xml"
+//Settings
+#define MIN_SAMPLES 8
+#define MAX_SAMPLES 64
+#define RAY_DIFFERENTIAL true
+#define VARIANCE 0.001
+#define ADAPTIVE true
+#define Halton_Random_Sampling true //false uses random, true uses halton for camera ray position
+#define SHADOW_SAMPLING true
+#define MAX_RAY_BOUNCE_COUNT 16
+#define MAX_GI_BOUNCE_COUNT 1
+#define GI_MAX_RAYS 10
+#define GI_MIN_RAYS 1
 
 Node rootNode;
 Camera camera;
@@ -57,10 +65,11 @@ int giBounce;
 extern void ShowViewport();
 extern int LoadScene(const char *filename);
 void BeginRender();
+void Init();
+void Trace(int i, int j);
 bool traceNode(Node *node, DifRays &ray, HitInfo &hitInfo, int hitSide);
 void StopRender();
 
-// ----------------------------------------------------------------------------- VARIABLES INITIALIZER ------------------------------------------------------------------------------------------------
 void Init()
 {
 	vectU = camera.dir ^ camera.up; // using the right hand thumb rule and cross product of unit vectors to get the direction in +x direction
@@ -84,14 +93,12 @@ void Init()
 		- u * (camera.imgWidth / 2); // since vector u is in +x direction and we need to go in -x direction to get to the top corner
 }
 
-
-// ----------------------------------------------------------------------------- MAIN ------------------------------------------------------------------------------------------------
 int main()
 {
 	LoadScene(RESOURCE_NAME);
 
-	//GILight *li = new GILight();
-	//lights.push_back(li);
+	GILight *li = new GILight();
+	lights.push_back(li);
 
 	std::thread(ShowViewport).detach();
 	
@@ -104,20 +111,17 @@ int main()
 	return 1;
 }
 
-
-// ----------------------------------------------------------------------------- BEGIN RENDER ------------------------------------------------------------------------------------------------
 void BeginRender()
 {
 	Init();
 	clock_t startTime = clock();
-	tbb::task_scheduler_init init(6);
+	tbb::task_scheduler_init init(4);
 	tbb::parallel_for(0, camera.imgHeight, [&](int j) {
-		for (int j = 0; j < camera.imgHeight; j++) {
+		//for (int j = 0; j < camera.imgHeight; j++) {
 			for (int i = 0; i < camera.imgWidth; i++) {
-				//if(i == 212 && j == 120)
 				Trace(i, j);
 			}
-		}
+		//}
 	});
 	clock_t endTime = clock();
 
@@ -150,7 +154,6 @@ void BeginRender()
 	}
 }
 
-// ----------------------------------------------------------------------------- RAY TRACING FUNCTION ------------------------------------------------------------------------------------------------
 void Trace(int i, int j) {
 	//Halton(int index, int base);
 	Point3 dircenter, dirx, diry, pixel_center_ij, subpixel, antialiasingRayDir;
@@ -234,7 +237,6 @@ void Trace(int i, int j) {
 		{
 			if(cameraPoint == camera.pos)
 				distanceBuffer[pixelIndexInImg] = hit_info.z;
-			giBounce = 1;
 			rayColor = hit_info.node->GetMaterial()->Shade(rays, hit_info, lights, MAX_RAY_BOUNCE_COUNT);
 		}
 		else
@@ -261,8 +263,6 @@ void Trace(int i, int j) {
 
 }
 
-
-// ----------------------------------------------------------------------------- SCENE TRACING AND HIT FINDING FUNCTION ------------------------------------------------------------------------------------------------
 bool traceNode(Node *node, DifRays &rays, HitInfo &hitInfo, int hitSide)
 {
 	DifRays nodeSpaceRay;
@@ -300,66 +300,36 @@ bool traceNode(Node *node, DifRays &rays, HitInfo &hitInfo, int hitSide)
 	return status;
 }
 
-// ---------------------------------------------------------------- Computing Global Illumination for the given Point and its normal ----------------------------------------------------------
-Color computeGlobalIllumination(const Point3 &p, const Point3 &N, int bounceCount)
+Point3 getHaltonNormal(float radius, HitInfo hInfo, int raySampleCount)
 {
-	DifRays ray;
-	int count = 0;
+	Point3 newNormal;
+	float x, y, z, xdist, ydist, zdist, dist;
+	Point3 xAxis = Point3(1, 0, 0), yAxis = Point3(0, 1, 0), zAxis(0, 0, 1);
+	Point3 sphPoint, sphCent = hInfo.p + hInfo.N.GetNormalized(),
+		sphBound = sphCent - radius * xAxis - radius * yAxis + radius * zAxis;
+
 	bool status = false;
-	Color indirectColor(0, 0, 0);
-	float cpdVal, normalR, normalTheta, normalPhi, x, y, z, shadowVal = 0;
-	Point3 xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1), li8Point, newDir;
-	float cosine = 0;
-	int numOfRays = giBounce == 1 ? GI_MAX_RAYS : (giBounce <= 4 ? GI_MIN_RAYS : 0);
-	for (int i = 0; i < numOfRays; i++) {
-		count = 0, status = false;
-		do {
-			cpdVal = ((double)rand() / (RAND_MAX));
-			normalR = sqrt(cpdVal) * 1;
-			normalTheta = ((double)rand() / (RAND_MAX)) * 2 * PI;
-			normalPhi = ((double)rand() / (RAND_MAX)) * 4 * PI;
-			x = normalR * sin(normalTheta) * cos(normalPhi);
-			y = normalR * sin(normalTheta) * sin(normalPhi);
-			z = normalR * cos(normalTheta);
+	float sqRadius = radius * radius;
+	do {
+		status = false;
+		x = Halton(raySampleCount, 2); // Halton sequence base 2
+		y = Halton(raySampleCount, 3); // Halton sequence base 3
+		z = Halton(raySampleCount, 5); // Halton sequence base 5
+		xdist = x * radius * 2;
+		ydist = y * radius * 2;
+		zdist = z * radius * 2;
+		Point3 newPoint = sphBound + xdist * xAxis + ydist * yAxis - zdist * zAxis;
 
-			li8Point = p + x * xAxis + y * yAxis + z * zAxis;
-			newDir = (li8Point - p).GetNormalized();
-			cosine = newDir.Dot(N);
-			if (cosine >= 0)
-				status = true;
-			else
-			{
-				newDir = -newDir;
-				cosine = newDir.Dot(N);
-				if (cosine >= 0)
-					status = true;
-				else
-					count++;
-			}
-		} while (!status && count < 100);
+		dist = pow(sphCent.x - newPoint.x, 2) + pow(sphCent.y - newPoint.y, 2) + pow(sphCent.z - newPoint.z, 2);
+		if (dist <= sqRadius)
+			status = true, newNormal = (newPoint - hInfo.p).GetNormalized();
+		else
+			raySampleCount++;
+	} while (!status && raySampleCount < 1000);
 
-
-		ray = DifRays(p, newDir);
-		//shadowVal = Shadow(ray, 1);
-
-		HitInfo temp;
-		if (traceNode(&rootNode, ray, temp, HIT_FRONT_AND_BACK))
-		{
-			giBounce++;
-			Color x = temp.node->GetMaterial()->Shade(ray, temp, lights, bounceCount - 1);
-			indirectColor += x * cosine;
-			giBounce--;
-		}
-		else {
-			indirectColor += environment.SampleEnvironment(ray.ray.dir);
-		}
-	}
-	if (indirectColor != Color(0, 0, 0))
-		indirectColor = indirectColor / numOfRays;
-	return indirectColor;
+	return newNormal;
 }
 
-// ----------------------------------------------------------------------------- BLINN SHADER ------------------------------------------------------------------------------------------------
 // Blinn shading
 // H = L+V/|L+V|
 // I0(V) = Summation of all lights { Ii*(N*Li)(kd + ks (N*Hi)^a)} + Iamb * kd;  
@@ -395,7 +365,10 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 		
 		if (li->IsAmbient())
 		{
-			color += diffuse.Sample(hInfo.uvw) * li->Illuminate(hInfo.p, surfaceNormal);
+			if (bounceCount >= MAX_RAY_BOUNCE_COUNT - 4 && giBounce == 1)
+			{
+				color += diffuse.Sample(hInfo.uvw) * li->Illuminate(hInfo.p, surfaceNormal);
+			}
 			continue;
 		}
 		Color liIntensity(0, 0, 0);
@@ -405,33 +378,39 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 		Point3 lDir = li->Direction(hInfo.p).GetNormalized();
 
 
-		Hi = -(lDir + viewDir).GetNormalized(); // half vector
+		Hi = (lDir + viewDir).GetNormalized(); // half vector
 		if (rays.status)
 		{
-			HiCent = -(lDir + viewDirCenter).GetNormalized();
-			HiX = -(lDir + viewDirX).GetNormalized();
-			HiY = -(lDir + viewDirY).GetNormalized();
+			HiCent = (lDir + viewDirCenter).GetNormalized();
+			HiX = (lDir + viewDirX).GetNormalized();
+			HiY = (lDir + viewDirY).GetNormalized();
 
-			color += liIntensity * fmax(0, surfaceNormal.Dot(-lDir)) * (diffuse.Sample(hInfo.uvw, hInfo.duvw, true) + specular.Sample(hInfo.uvw, hInfo.duvw, true)
+			color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse.Sample(hInfo.uvw, hInfo.duvw, true) + specular.Sample(hInfo.uvw, hInfo.duvw, true)
 				*  ((pow(fmax(0, surfaceNormal.Dot(HiCent)), glossiness) + pow(fmax(0, surfaceNormal.Dot(HiX)), glossiness) + pow(fmax(0, surfaceNormal.Dot(HiY)), glossiness)) / 3));
 
 		}
 		else
-			color += liIntensity * fmax(0, surfaceNormal.Dot(-lDir)) * (diffuse.Sample(hInfo.uvw) + specular.Sample(hInfo.uvw) *  pow(fmax(0, surfaceNormal.Dot(Hi)), glossiness));
-	}
-	//Global Illumination
-	{
-		if (giBounce <= 3 ) {
-			Color giColor = computeGlobalIllumination(hInfo.p, hInfo.N, bounceCount);
-			color += giColor/* * diffuse.Sample(hInfo.uvw)*/;
-		}
+			color += liIntensity * fmax(0, surfaceNormal.Dot(lDir)) * (diffuse.Sample(hInfo.uvw) + specular.Sample(hInfo.uvw) *  pow(fmax(0, surfaceNormal.Dot(Hi)), glossiness));
 	}
 
 	if (refraction.GetColor() != Color(0, 0, 0))
 	{
-		Point3 newNormal = -surfaceNormal;
+		/*float normalR, normalTheta, normalPhi, cpdVal, x, y, z;
+		
+		cpdVal = ((double)rand() / (RAND_MAX));
+		normalR = sqrt(cpdVal) * refractionGlossiness;
+		normalTheta = ((double)rand() / (RAND_MAX)) * 2 * PI;
+		normalPhi = ((double)rand() / (RAND_MAX)) * 4 * PI;
+		x = normalR * sin(normalTheta) * cos(normalPhi);
+		y = normalR * sin(normalTheta) * sin(normalPhi);
+		z = normalR * cos(normalTheta);
+
+		sphPoint = sphCent + x * xAxis + y * yAxis + z * zAxis;
+		newNormal = (sphPoint - hInfo.p).GetNormalized();*/
+		
+		Point3 newNormal = surfaceNormal;
 		if (refractionGlossiness)		
-			newNormal = -getHaltonNormal(refractionGlossiness, hInfo, haltonRefractionCount);
+			newNormal = getHaltonNormal(refractionGlossiness, hInfo, haltonRefractionCount);
 
 		cosi = newNormal.Dot(viewDir);
 		sini = sqrt(1 - fmin(pow(cosi, 2), 1));
@@ -603,10 +582,55 @@ Color MtlBlinn::Shade(const DifRays &rays, const HitInfo &hInfo, const LightList
 
 }
 
-// ----------------------------------------------------------------------------- LIGHT ILLUMINATE OVERRIDE ------------------------------------------------------------------------------------------------
 Color GILight::Illuminate(const Point3 &p, const Point3 &N) const
 {
-	return computeGlobalIllumination(p, N, 4);
+	DifRays ray;
+	int count = 0;
+	bool status = false;
+	Color indirectColor(0, 0, 0);
+	float cpdVal, normalR, normalTheta, normalPhi, x, y, z, shadowVal = 0;
+	Point3 xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1), li8Point, newDir;
+	float cosine = 0;
+	int numOfRays = giBounce == 1 ? GI_MAX_RAYS : (giBounce <= 4 ? GI_MIN_RAYS : 0);
+	for (int i = 0; i < numOfRays ; i++) {
+		count = 0, status = false;
+		do {
+			cpdVal = ((double)rand() / (RAND_MAX));
+			normalR = sqrt(cpdVal) * 1;
+			normalTheta = ((double)rand() / (RAND_MAX)) * 2 * PI;
+			normalPhi = ((double)rand() / (RAND_MAX)) * 4 * PI;
+			x = normalR * sin(normalTheta) * cos(normalPhi);
+			y = normalR * sin(normalTheta) * sin(normalPhi);
+			z = normalR * cos(normalTheta);
+
+			li8Point = p + x * xAxis + y * yAxis + z * zAxis;
+			newDir = (li8Point - p).GetNormalized();
+			cosine = newDir.Dot(N);
+			if (cosine >= 0)
+				status = true;
+			else
+				count++;
+		} while (!status && count < 100);
+
+
+		ray = DifRays(p, newDir);
+		//shadowVal = Shadow(ray, 1);
+
+		HitInfo temp;
+		if (traceNode(&rootNode, ray, temp, HIT_FRONT_AND_BACK))
+		{
+			giBounce++;
+			Color x = temp.node->GetMaterial()->Shade(ray, temp, lights, 4);
+			indirectColor += x * cosine;
+			giBounce--;
+		}
+		else {
+			indirectColor += environment.SampleEnvironment(ray.ray.dir) * cosine;
+		}
+	}
+	if (indirectColor != Color(0, 0, 0))
+		indirectColor = indirectColor / numOfRays;
+	return indirectColor;
 }
 
 Color PointLight::Illuminate(const Point3 &p, const Point3 &N) const
@@ -619,6 +643,22 @@ Color PointLight::Illuminate(const Point3 &p, const Point3 &N) const
 		float normalR, normalTheta, normalPhi, cpdVal;
 
 		while (countRay <= MaxRays) {
+			/*do {
+				x = Halton(countRay, 2);
+				y = Halton(countRay, 3);
+				z = Halton(countRay, 5);
+
+				xdist = x * size;
+				ydist = y * size;
+				zdist = z * size;
+				Point3 point = li8Bound + xdist * xAxis + ydist * yAxis -zdist * zAxis;
+
+				dist = pow(position.x - point.x, 2) + pow(position.y - point.y, 2) + pow(position.z - point.z, 2);
+				if (dist <= sqRadius)
+					status = true, newDir = (point - p);
+				countRay++;
+			} while (!status && countRay < 1000);*/
+
 			cpdVal = ((double)rand() / (RAND_MAX));
 			normalR = sqrt(cpdVal) * size;
 			normalTheta = ((double)rand() / (RAND_MAX)) * 2 * PI;
@@ -656,8 +696,6 @@ Color PointLight::Illuminate(const Point3 &p, const Point3 &N) const
 	return Shadow(DifRays(p, position - p), 1) * intensity;
 };
 
-
-// ----------------------------------------------------------------------------- SHADOW FINDING FUNCTION ------------------------------------------------------------------------------------------------
 float GenLight::Shadow(DifRays rays, float t_max)
 {
 	HitInfo hitInfo;
@@ -672,6 +710,5 @@ float GenLight::Shadow(DifRays rays, float t_max)
 	return 1;
 }
 
-// ----------------------------------------------------------------------------- STOP RENDERING ------------------------------------------------------------------------------------------------
 void StopRender()
 {}

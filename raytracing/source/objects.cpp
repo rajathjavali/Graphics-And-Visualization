@@ -52,7 +52,7 @@ bool Sphere::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) cons
 		{
 			hInfo.z = x1;
 			hInfo.p = rays.ray.p + x1 * rays.ray.dir;
-			hInfo.N = -hInfo.p;
+			hInfo.N = hInfo.p;
 			hInfo.front = true;
 			status = true;
 
@@ -61,7 +61,7 @@ bool Sphere::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) cons
 		{
 			hInfo.z = x2;
 			hInfo.p = rays.ray.p + x2 * rays.ray.dir;
-			hInfo.N = -hInfo.p;
+			hInfo.N = hInfo.p;
 			hInfo.front = true;
 			status = true;
 		}
@@ -87,7 +87,7 @@ bool Sphere::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) cons
 		{
 			hInfo.z = x1;
 			hInfo.p = rays.ray.p + x1 * rays.ray.dir;
-			hInfo.N = -hInfo.p;
+			hInfo.N = hInfo.p;
 			if (x1 < x2)
 				hInfo.front = true;
 			else
@@ -98,7 +98,7 @@ bool Sphere::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) cons
 		{
 			hInfo.z = x2;
 			hInfo.p = rays.ray.p + x2 * rays.ray.dir;
-			hInfo.N = -hInfo.p;
+			hInfo.N = hInfo.p;
 			if (x2 < x1)
 				hInfo.front = true;
 			else
@@ -189,13 +189,14 @@ bool Plane::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) const
 		if (fabs(hP.x) < 1 && fabs(hP.y) < 1)
 		{
 			hInfo.z = t;
-			if (rays.ray.dir.Dot(Point3(0, 0, 1)) > 0)
+			hInfo.N = Point3(0, 0, 1);
+			/*if (rays.ray.dir.Dot(Point3(0, 0, 1)) > 0)
 				hInfo.N = Point3(0, 0, 1);
 			else
-				hInfo.N = Point3(0, 0, -1);
+				hInfo.N = Point3(0, 0, -1);*/
 
 			hInfo.p = hP;
-			hInfo.uvw = Point3((hInfo.p.x + 1) / 2, (hInfo.p.y + 1) / 2, 0);
+			hInfo.uvw = Point3((hInfo.p.x + 1.0f) / 2.0f, (hInfo.p.y + 1.0f) / 2.0f, 0);
 			// ray differential sampling
 			if(rays.status)
 			{
@@ -219,8 +220,8 @@ bool Plane::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) const
 				hPx.x = fmin(1, hPx.x), hPx.y = fmin(1, hPx.y);
 				hPy.x = fmin(1, hPy.x), hPy.y = fmin(1, hPy.y);
 
-				hInfo.duvw[0] = (hPx - hP) * 1.5;
-				hInfo.duvw[1] = (hPy - hP) * 1.5;
+				hInfo.duvw[0] = (hPx - hP);
+				hInfo.duvw[1] = (hPy - hP);
 			}
 
 			return true;
@@ -428,10 +429,11 @@ bool TriObj::IntersectTriangle(const DifRays &rays, HitInfo &hInfo, int hitSide,
 			hInfo.z = t;
 			Point3 intrapolatedNormal = GetNormal(faceID, Point3(alpha, beta, gamma));
 			intrapolatedNormal.Normalize();
-			if (rays.ray.dir.Dot(intrapolatedNormal) > 0)
+			hInfo.N = intrapolatedNormal;
+			/*if (rays.ray.dir.Dot(intrapolatedNormal) > 0)
 				hInfo.N = intrapolatedNormal;
 			else
-				hInfo.N = -intrapolatedNormal;
+				hInfo.N = -intrapolatedNormal;*/
 
 			hInfo.uvw = GetTexCoord(faceID, Point3(alpha, beta, gamma));
 			// ray differential sampling

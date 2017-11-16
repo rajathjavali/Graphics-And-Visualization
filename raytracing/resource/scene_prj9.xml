@@ -4,7 +4,7 @@
       <scale y="0.4"/>
       <translate y="-0.1"/>
     </background>
-    <environment value="0.3" texture="resource/clouds.png"/>
+    <environment value="0.3" texture="clouds.png"/>
  
     <!-- Objects -->
     <object type="plane" material="ground">
@@ -73,7 +73,7 @@
       <reflection value="0.5"/>
     </material>
     <material type="blinn" name="bricks">
-      <diffuse texture="resource/bricks.png">
+      <diffuse texture="bricks.png">
       </diffuse>
       <specular value="0.3"/>
       <glossiness value="10"/>
