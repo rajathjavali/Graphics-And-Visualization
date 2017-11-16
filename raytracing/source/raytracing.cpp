@@ -112,12 +112,12 @@ void BeginRender()
 	clock_t startTime = clock();
 	tbb::task_scheduler_init init(6);
 	tbb::parallel_for(0, camera.imgHeight, [&](int j) {
-		for (int j = 0; j < camera.imgHeight; j++) {
+		//for (int j = 0; j < camera.imgHeight; j++) {
 			for (int i = 0; i < camera.imgWidth; i++) {
 				//if(i == 212 && j == 120)
 				Trace(i, j);
 			}
-		}
+		//}
 	});
 	clock_t endTime = clock();
 
