@@ -1,2 +1,1 @@
-# Visualization-in-DataScience
-Visualization Project and Assignments for Fall 2017
+# Visualization-in-DataScience And Ray Tracing
