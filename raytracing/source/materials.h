@@ -3,8 +3,8 @@
 ///
 /// \file       materials.h 
 /// \author     Cem Yuksel (www.cemyuksel.com)
-/// \version    11.0
-/// \date       November 11, 2015
+/// \version    13.0
+/// \date       November 20, 2015
 ///
 /// \brief Example source for CS 6620 - University of Utah.
 ///
@@ -45,6 +45,14 @@ public:
 
 	virtual void SetViewportMaterial(int subMtlID = 0) const; // used for OpenGL display
 
+															  // Photon Extensions
+	virtual bool IsPhotonSurface(int subMtlID = 0) const { return diffuse.GetColor().Gray() > 0; } // if this method returns true, the photon will be stored
+	virtual bool RandomPhotonBounce(Ray &r, Color &c, const HitInfo &hInfo) const;  // if this method returns true, a new photon with the given direction and color will be traced
+
+	virtual bool RandomCausticPhotonBounce(Ray &r, Color &c, const HitInfo &hInfo) const;  // if this method returns true, a new photon with the given direction and color will be traced
+	virtual bool isSpecular() const { return (refraction.GetColor() + reflection.GetColor()).Gray() > 0 ? true : false; }
+	virtual bool isRefractiveSpecular() const { return refraction.GetColor().Gray() > 0 ? true : false; }
+
 private:
 	TexturedColor diffuse, specular, reflection, refraction, emission;
 	float glossiness;
@@ -65,6 +73,10 @@ public:
 	virtual void SetViewportMaterial(int subMtlID = 0) const { if (subMtlID<(int)mtls.size()) mtls[subMtlID]->SetViewportMaterial(); }
 
 	void AppendMaterial(Material *m) { mtls.push_back(m); }
+
+	// Photon Extensions
+	virtual bool IsPhotonSurface(int subMtlID = 0) const { return mtls[subMtlID]->IsPhotonSurface(); }
+	virtual bool RandomPhotonBounce(Ray &r, Color &c, const HitInfo &hInfo) const { return hInfo.mtlID<(int)mtls.size() ? mtls[hInfo.mtlID]->RandomPhotonBounce(r, c, hInfo) : false; }
 
 private:
 	std::vector<Material*> mtls;

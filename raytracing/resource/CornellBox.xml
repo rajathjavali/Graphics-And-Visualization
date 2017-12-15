@@ -28,7 +28,7 @@
         <translate x="15"/>
       </object>
     </object>
-<!--     <object type="obj" name="teapot.obj" material="mtl1">
+    <object type="obj" name="teapot.obj" material="mtl1">
       <scale value="0.75"/>
       <rotate angle="30" z="1"/>
       <translate x="-4.5" y="5" z="0"/>
@@ -37,7 +37,7 @@
       <scale value="4.5"/>
       <rotate angle="30" y="1"/>
       <translate x="8" y="-6" z="4.5"/>
-    </object> -->
+    </object>
  
     <!-- Materials -->
     <material type="blinn" name="wall">
@@ -64,13 +64,16 @@
     <material type="blinn" name="mtl2">
       <diffuse  r="0.2" g="0.8" b="0.2"/>
       <specular r="0.9" g="0.9" b="1.0" value="0.8"/>
-      <glossiness value="10"/>
+      <glossiness value="40"/>
+      <refraction value="0.8" index="1.52"/>
+      <absorption r="0.01" g="0.001" b="0.0001"/>
     </material>
  
     <!-- Lights -->
     <light type="point" name="pointLight">
       <intensity value="0.5"/>
       <position x="0" y="0" z="22"/>
+      <size value="5"/>
     </light>
   </scene>
  

@@ -1,0 +1,1 @@
+paste all these in ../raytracing folder in order to work

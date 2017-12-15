@@ -3,8 +3,8 @@
 ///
 /// \file       viewport.cpp 
 /// \author     Cem Yuksel (www.cemyuksel.com)
-/// \version    11.0
-/// \date       November 6, 2017
+/// \version    13.0
+/// \date       November 20, 2017
 ///
 /// \brief Example source for CS 6620 - University of Utah.
 ///
@@ -21,6 +21,7 @@
 #include "texture.h"
 #include <stdlib.h>
 #include <time.h>
+#include "tracer.h"
 
 #ifdef USE_GLUT
 # ifdef __APPLE__
@@ -481,6 +482,9 @@ void GlutKeyboard(unsigned char key, int x, int y)
 		viewMode = VIEWMODE_IRRADCOMP;
 		glutPostRedisplay();
 		break;
+	case 's':
+		saveImg();
+		break;
 	}
 }
 
@@ -511,6 +515,8 @@ void GlutMouse(int button, int state, int x, int y)
 		case GLUT_LEFT_BUTTON:
 			mouseMode = MOUSEMODE_DEBUG;
 			PrintPixelData(x, y);
+			//Init();
+			//Trace(x, y);
 			break;
 		case GLUT_RIGHT_BUTTON:
 			mouseMode = MOUSEMODE_ROTATE;
@@ -638,6 +644,13 @@ void GenLight::SetViewportParam(int lightID, ColorA ambient, ColorA intensity, P
 	glLightfv(GL_LIGHT0 + lightID, GL_DIFFUSE, &intensity.r);
 	glLightfv(GL_LIGHT0 + lightID, GL_SPECULAR, &intensity.r);
 	glLightfv(GL_LIGHT0 + lightID, GL_POSITION, &pos.x);
+}
+void PointLight::SetViewportLight(int lightID) const
+{
+	SetViewportParam(lightID, ColorA(0, 0, 0), ColorA(intensity), Point4(position, 1.0f));
+	glLightf(GL_LIGHT0 + lightID, GL_CONSTANT_ATTENUATION, 0);
+	glLightf(GL_LIGHT0 + lightID, GL_LINEAR_ATTENUATION, 0);
+	glLightf(GL_LIGHT0 + lightID, GL_QUADRATIC_ATTENUATION, 1);
 }
 bool TextureFile::SetViewportTexture() const
 {

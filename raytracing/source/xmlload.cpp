@@ -3,8 +3,8 @@
 ///
 /// \file       xmlload.cpp 
 /// \author     Cem Yuksel (www.cemyuksel.com)
-/// \version    11.0
-/// \date       November 6, 2017
+/// \version    11.1
+/// \date       November 22, 2017
 ///
 /// \brief Example source for CS 6620 - University of Utah.
 ///
@@ -237,8 +237,10 @@ void LoadNode(Node *parent, TiXmlElement *element, int level)
 									m->SetReflection(Color(mtl.Ks));
 									if (mtl.map_Ks.data != nullptr) m->SetReflectionTexture(new TextureMap(ReadTexture(mtl.map_Ks.data)));
 									float gloss = acosf(powf(2, 1 / mtl.Ns));
+									m->SetReflectionGlossiness(gloss);
 									if (mtl.illum >= 6) {
 										m->SetRefraction(1 - Color(mtl.Tf));
+										m->SetRefractionGlossiness(gloss);
 									}
 								}
 								mm->AppendMaterial(m);

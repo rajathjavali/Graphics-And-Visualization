@@ -1,0 +1,284 @@
+<xml>
+    <scene>
+        <!-- Objects -->
+        <object name="box">
+            <translate x="1.5" y="0" z="12"/>
+            <object type="plane" name="WallBottom" material="wall">
+                <scale value="60"/>
+                <translate z="-20"/>
+            </object>
+            <object type="plane" name="WallBack" material="wallback">
+                <scale value="30"/>
+                <rotate angle="90" x="1"/>
+                <translate y="40"/>
+            </object>
+            <object type="plane" name="WallFront" material="wall">
+                <scale value="80"/>
+                <rotate angle="90" x="1"/>
+                <translate y="-101"/>
+            </object>
+            <object type="plane" name="WallTop" material="wall">
+                <scale value="60"/>
+                <rotate angle="180" x="1"/>
+                <translate z="20"/>
+            </object>
+
+            <object type="plane" name="WallLeft" material="wallRed">
+                <scale value="60"/>
+                <rotate angle="90" y="1"/>
+                <translate x="-20"/>
+            </object>
+            <object type="plane" name="WallRight" material="wallBlue">
+                <scale value="60"/>
+                <rotate angle="-90" y="1"/>
+                <translate x="20"/>
+            </object>
+        </object>
+        <object name="stand">
+            <translate x="7" y="20" z="-5"/>
+            <object type="plane" name="BoxBottom" material="wallback">
+                <scale value="5"/>
+                <translate z="-5"/>
+            </object>
+            <object type="plane" name="BoxBack" material="wallback">
+                <scale value="5"/>
+                <rotate angle="90" x="1"/>
+                <translate y="5"/>
+            </object>
+            <object type="plane" name="BoxFront" material="wallback">
+                <scale value="5"/>
+                <rotate angle="-90" x="1"/>
+                <translate y="-5"/>
+            </object>
+            <object type="plane" name="BoxTop" material="wallback">
+                <scale value="5"/>
+                <translate z="5"/>
+            </object>
+
+            <object type="plane" name="BoxLeft" material="wallback">
+                <scale value="5"/>
+                <rotate angle="-90" y="1"/>
+                <translate x="-5"/>
+            </object>
+            <object type="plane" name="BoxRight" material="wallback">
+                <scale value="5"/>
+                <rotate angle="90" y="1"/>
+                <translate x="5"/>
+            </object>
+        </object>
+        <object type="obj" name="Only_Spider_with_Animations_Export.obj">
+            <scale value="0.03"/>
+            <rotate angle="40" x="1"/>
+            <rotate angle="10" y="1"/>
+            <rotate angle="180" z="1"/>
+            <translate x="4" y="15" z="8"/>
+        </object>
+        <object type="obj" name="solid_teapot.obj" material="mtl1">
+            <scale value="0.8"/>
+            <rotate angle="-30" z="1"/>
+            <translate x="7" y="20" z="0"/>
+        </object>
+        <object type="sphere" name="sphere2" material="mtl2">
+            <scale value="4"/>
+            <translate x="15" y="10" z="-4"/>
+        </object>
+    
+        <object type="obj" name="resource/house_plant/house plant.obj">
+            <scale value="0.01"/>
+            <rotate angle="90" x="1"/>
+            <translate x="-15" y="-17" z="-8"/>
+        </object>
+        <object type="obj" name="resource/SantaClaus/SantaClaus.obj">
+            <scale value="13"/>
+            <rotate angle="90" x="1"/>
+            <rotate angle="40" z="1"/>
+            <translate x="-10" y="25" z="4"/>
+        </object>
+        <object type="obj" name="uh60.obj">
+            <scale value="1"/>
+            <rotate angle="130" z="1"/>
+            <translate x="5" y="-1" z="-6.5"/>
+        </object>
+        <object type="obj" name="model.obj" material ="cow">
+            <scale value="1"/>
+            <rotate angle="90" x="1"/>
+            <rotate angle="-40" z="1"/>
+            <translate x="-5" y="5" z="-4"/>
+        </object>
+
+        <!-- <object type="obj" name="resource/tree/CartoonTree.obj">
+            <scale value="0.5"/>
+            <translate x="0" y="0" z="0"/>
+        </object> -->
+        <!-- <object type="obj" name="resource/earth/earth.obj">
+            <scale value="0.01"/>
+            <translate x="2" y="20" z="4"/>
+        </object> -->
+        <!-- <object name="bush">
+            <translate x="-16" y="0" z="-7.8"/>
+            <object type="obj" name="HighGrass.obj" material ="mtl4">
+                <scale value="30"/>
+                <rotate angle="90" x="1"/>
+                <rotate angle ="-45" z ="1"/>
+                <translate x="-2" y="0" z="0"/>
+            </object>
+            <object type="obj" name="HighGrass.obj" material ="mtl4">
+                <scale value="30"/>
+                <rotate angle="90" x="1"/>
+                <rotate angle ="-45" z ="1"/>
+                <translate x="-1" y="-2" z="0"/>
+            </object>
+            <object type="obj" name="HighGrass.obj" material ="mtl4">
+                <scale value="30"/>
+                <rotate angle="90" x="1"/>
+                <rotate angle ="-45" z ="1"/>
+                <translate x="-1" y="2" z="0"/>
+            </object>
+            <object type="obj" name="HighGrass.obj" material ="mtl4">
+                <scale value="30"/>
+                <rotate angle="90" x="1"/>
+                <rotate angle ="-45" z ="1"/>
+                <translate x="0" y="0" z="0"/>
+            </object>
+                        <object type="obj" name="HighGrass.obj" material ="mtl4">
+                <scale value="30"/>
+                <rotate angle="90" x="1"/>
+                <rotate angle ="-45" z ="1"/>
+                <translate x="0" y="-2" z="0"/>
+            </object>
+            <object type="obj" name="HighGrass.obj" material ="mtl4">
+                <scale value="30"/>
+                <rotate angle="90" x="1"/>
+                <rotate angle ="-45" z ="1"/>
+                <translate x="0" y="2" z="0"/>
+            </object>
+            <object type="obj" name="HighGrass.obj" material ="mtl4">
+                <scale value="30"/>
+                <rotate angle="90" x="1"/>
+                <rotate angle ="-45" z ="1"/>
+                <translate x="2" y="0" z="0"/>
+            </object>
+            <object type="obj" name="HighGrass.obj" material ="mtl4">
+                <scale value="30"/>
+                <rotate angle="90" x="1"/>
+                <rotate angle ="-45" z ="1"/>
+                <translate x="1" y="-2" z="0"/>
+            </object>
+
+            <object type="obj" name="HighGrass.obj" material ="mtl4">
+                <scale value="30"/>
+                <rotate angle="90" x="1"/>
+                <rotate angle ="-45" z ="1"/>
+                <translate x="1" y="2" z="0"/>
+            </object>
+        </object> -->
+        <!-- <object type="obj" name="resource/table/Bedside Table C.obj">
+            <scale value="1"/>
+            <<rotate angle ="90" y = "1"/>
+            <translate x="1" y="2" z="0"/>
+        </object> -->
+        <!-- Materials -->
+        <material type="blinn" name="wall">
+            <diffuse  r="1" g="1" b="1"/>
+            <specular value="0"/>
+        </material>
+        <material type="blinn" name="wallback">
+            <diffuse  r="1" g="1" b="1"/>
+            <specular value="0.5"/>
+            <glossiness value="80"/>
+            <reflection value="0.5"/>
+        </material>
+        <material type="blinn" name="transparent">
+            <diffuse  value ="0"/>
+            <specular value="1"/>
+            <glossiness value="80"/>
+            <refraction value="1.0" index="1.52"/>
+        </material>
+        <material type="blinn" name="wallRed">
+            <diffuse  r="1.0" g="0.5" b="0.5"/>
+            <specular value="0.5"/>
+            <glossiness value="80"/>
+            <reflection value="0.5"/>
+        </material>
+        <material type="blinn" name="wallBlue">
+            <diffuse  r="0.5" g="0.5" b="1.0"/>
+            <specular value="0.5"/>
+            <glossiness value="80"/>
+            <reflection value="0.5"/>
+        </material>
+        <material type="blinn" name="mtl1">
+            <diffuse  value="0"/>
+            <specular value="1.0"/>
+            <glossiness value="80"/>
+            <refraction value="1.0" index="1.52"/>
+        </material>
+        <material type="blinn" name="mtl2">
+            <diffuse  value="0"/>
+            <specular value="1.0"/>
+            <glossiness value="80"/>
+            <reflection value="1.0"/>
+        </material>
+        <material type="blinn" name="mtl3">
+            <diffuse  value="0"/>
+            <specular value="1.0"/>
+            <glossiness value="80"/>
+            <refraction value="1.0" index="1.52"/>
+        </material>
+        <material type="blinn" name="emissive">
+            <diffuse  r = "1" g = "0.7" b="0.3"/>
+            <specular value="0.6"/>
+            <glossiness value="80"/>
+            <refraction value="0.6" index="1.52"/>
+        </material>
+        <material type="blinn" name="mtl4">
+            <diffuse  r="0.2" g="0.821" b="0.2"/>
+           <!--  <specular vakye="1.0"/> -->
+            <glossiness value="80"/>
+            <!-- <refraction value="1.0" index="1.52"/> -->
+        </material>
+        <material type="blinn" name="cow">
+            <diffuse  r="1" g="1" b="1"/>
+            <specular value="0"/>
+            <reflection value="0.3"/>
+        </material>
+        <material type="blinn" name="copter">
+            <diffuse  r="0.2" g="0.2" b="0.2"/>
+            <specular value="0"/>
+            <reflection value="0.3"/>
+        </material>
+ 
+        <!-- Lights -->
+        <light type="point" name="pointLightred">
+          <intensity r = "1" b="0.3" g ="0.3" value="40.0"/>
+          <position x="0" y="15" z="20"/>
+          <size value="5"/>
+        </light>
+        <light type="point" name="pointLightgreen">
+          <intensity r = "0.3" b="0.3" g ="1" value="40.0"/>
+          <position x="-10" y="-15" z="20"/>
+          <size value="5"/>
+        </light>
+        <light type="point" name="pointLightblue">
+          <intensity r = "0.3" b="1" g ="0.3" value="40.0"/>
+          <position x="10" y="-8" z="20"/>
+          <size value="5"/>
+        </light>
+<!--         <light type="point" name="pointLightorange">
+          <intensity r = "1" b="0.7" g ="0.3" value="20.0"/>
+          <position x="1.5" y="15" z="5"/>
+          <size value="5"/>
+        </light> -->
+        <!-- <light type="ambient" name="ambientLight">
+          <intensity value="0.2"/>
+        </light> -->
+    </scene>
+ 
+    <camera>
+        <position x="0" y="-100" z="20"/>
+        <target x="0" y="0" z="12"/>
+        <up x="0" y="0" z="1.6"/>
+        <fov value="30"/>
+        <width value="800"/>
+        <height value="600"/>
+    </camera>
+</xml>

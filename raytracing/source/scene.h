@@ -1,10 +1,9 @@
-
 //-------------------------------------------------------------------------------
 ///
 /// \file       scene.h 
 /// \author     Cem Yuksel (www.cemyuksel.com)
-/// \version    11.0
-/// \date       November 6, 2017
+/// \version    13.0
+/// \date       November 22, 2017
 ///
 /// \brief Example source for CS 6620 - University of Utah.
 ///
@@ -68,16 +67,14 @@ public:
 	void Normalize() { dir.Normalize(); }
 };
 
-//-------------------------------------------------------------------------------
-
 struct DifRays {
 	Ray ray, difcenter, difx, dify;
 	bool status;
 	DifRays() : status(false) {};
+	DifRays(const Ray &r) : ray(r.p, r.dir), status(false) {};
 	DifRays(const Point3 &_p, const Point3 &_dir) : ray(_p, _dir), status(false) {};
 	DifRays(const Point3 &_p, const Point3 &_dir, const Point3 &_dir1, const Point3 &_dir2, const Point3 &_dir3) : ray(_p, _dir), difcenter(_p, _dir1), difx(_p, _dir2), dify(_p, _dir3), status(true) {};
 };
-
 //-------------------------------------------------------------------------------
 
 class Box
@@ -296,6 +293,11 @@ public:
 	virtual Point3  Direction(const Point3 &p) const = 0;
 	virtual bool    IsAmbient() const { return false; }
 	virtual void    SetViewportLight(int lightID) const {}  // used for OpenGL display
+	virtual float  totalDist(const Point3 &p) const { return 1; };
+															// Photon Extensions
+	virtual bool    IsPhotonSource()        const { return false; }
+	virtual Color   GetPhotonIntensity()    const { return Color(0, 0, 0); }
+	virtual Ray     RandomPhoton()          const { return Ray(Point3(0, 0, 0), Point3(0, 0, 1)); }
 };
 
 class LightList : public ItemList<Light> {};
@@ -312,6 +314,14 @@ public:
 	virtual Color Shade(const DifRays &ray, const HitInfo &hInfo, const LightList &lights, int bounceCount) const = 0;
 
 	virtual void SetViewportMaterial(int subMtlID = 0) const {}   // used for OpenGL display
+
+																  // Photon Extensions
+	virtual bool IsPhotonSurface(int subMtlID = 0) const { return true; } // if this method returns true, the photon will be stored
+	virtual bool RandomPhotonBounce(Ray &r, Color &c, const HitInfo &hInfo) const { return false; } // if this method returns true, a new photon with the given direction and color will be traced
+
+	virtual bool RandomCausticPhotonBounce(Ray &r, Color &c, const HitInfo &hInfo) const { return false; }// if this method returns true, a new photon with the given direction and color will be traced
+	virtual bool isSpecular() const { return false; }
+	virtual bool isRefractiveSpecular() const { return false; }
 };
 
 class MaterialList : public ItemList<Material>
@@ -552,7 +562,7 @@ private:
 	int     width, height;
 	std::atomic<int> numRenderedPixels;
 public:
-	RenderImage() : img(NULL), zbuffer(NULL), zbufferImg(NULL), width(0), height(0), numRenderedPixels(0) {}
+	RenderImage() : img(NULL), zbuffer(NULL), zbufferImg(NULL), sampleCount(NULL), sampleCountImg(NULL), irradComp(NULL), width(0), height(0), numRenderedPixels(0) {}
 	void Init(int w, int h)
 	{
 		width = w;
@@ -564,7 +574,7 @@ public:
 		if (zbufferImg) delete[] zbufferImg;
 		zbufferImg = NULL;
 		if (sampleCount) delete[] sampleCount;
-		sampleCount = new uchar[width*height];;
+		sampleCount = new uchar[width*height];
 		if (sampleCountImg) delete[] sampleCountImg;
 		sampleCountImg = NULL;
 		if (irradComp) delete[] irradComp;
@@ -644,8 +654,8 @@ public:
 	bool SaveZImage(const char *filename) const { return SavePNG(filename, zbufferImg, 1); }
 	bool SaveSampleCountImage(const char *filename) const { return SavePNG(filename, sampleCountImg, 1); }
 	bool SaveIrradianceComputationImage(const char *filename) const { return SavePNG(filename, irradComp, 1); }
-
-public:
+	
+private:
 	bool SavePNG(const char *filename, uchar *data, int compCount) const
 	{
 		LodePNGColorType colortype;

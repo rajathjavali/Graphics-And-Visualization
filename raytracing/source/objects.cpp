@@ -32,16 +32,16 @@ bool Sphere::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) cons
 
 	rayToObj = rays.ray.p;
 	a = rays.ray.dir.Dot(rays.ray.dir);
-	b = 2 * rayToObj.Dot(rays.ray.dir);
+	b = rayToObj.Dot(rays.ray.dir);
 	c = rayToObj.Dot(rayToObj) - 1.0;
 
-	delta = b * b - 4 * a * c;
+	delta = b * b - a * c;
 	if (delta < 0)
 		return false;
 
 	float x1, x2;
-	x1 = (sqrt(delta) - b) / (2 * a);
-	x2 = (-1 * sqrt(delta) - b) / (2 * a);
+	x1 = (float)(sqrt(delta) - b) / (float)a;
+	x2 = (float)(-1 * sqrt(delta) - b) / (float)a;
 
 	if (x1 < 0 && x2 < 0)
 		return false;
@@ -88,10 +88,8 @@ bool Sphere::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) cons
 			hInfo.z = x1;
 			hInfo.p = rays.ray.p + x1 * rays.ray.dir;
 			hInfo.N = hInfo.p;
-			if (x1 < x2)
-				hInfo.front = true;
-			else
-				hInfo.front = false;
+			hInfo.front = true;
+			hInfo.N.Normalize();
 			status = true;
 		}
 		if (hInfo.z > x2 && x2 > BIAS)
@@ -99,10 +97,8 @@ bool Sphere::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) cons
 			hInfo.z = x2;
 			hInfo.p = rays.ray.p + x2 * rays.ray.dir;
 			hInfo.N = hInfo.p;
-			if (x2 < x1)
-				hInfo.front = true;
-			else
-				hInfo.front = false;
+			hInfo.front = true;
+			hInfo.N.Normalize();
 			status = true;
 		}
 	}
@@ -183,12 +179,15 @@ bool Plane::IntersectRay(const DifRays &rays, HitInfo &hInfo, int hitSide) const
 	if (dz == 0)
 		return false;
 
-	t = -(pz / dz);
+	t = -((float)pz / dz);
 	if (t < hInfo.z && t > BIAS) {
-		hP = rays.ray.p + t * rays.ray.dir;
+		hP.x = rays.ray.p.x + t * rays.ray.dir.x;
+		hP.y = rays.ray.p.y + t * rays.ray.dir.y;
 		if (fabs(hP.x) < 1 && fabs(hP.y) < 1)
 		{
 			hInfo.z = t;
+			hInfo.front = true;
+			hP = rays.ray.p + t * rays.ray.dir;
 			hInfo.N = Point3(0, 0, 1);
 			/*if (rays.ray.dir.Dot(Point3(0, 0, 1)) > 0)
 				hInfo.N = Point3(0, 0, 1);
@@ -417,25 +416,25 @@ bool TriObj::IntersectTriangle(const DifRays &rays, HitInfo &hInfo, int hitSide,
 		totalArea = (vertB2d - vertA2d).Cross(vertC2d - vertA2d);
 		APB = (vertB2d - vertA2d).Cross(hitPoint2d - vertA2d);
 		BPC = (vertC2d - vertB2d).Cross(hitPoint2d - vertB2d);
-		//CPA = (vertA2d - vertC2d).Cross(hitPoint2d - vertC2d);
+
 		alpha = BPC / totalArea;
 		gamma = APB / totalArea;
 		beta = 1 - (alpha + gamma);
-		//beta = CPA / totalArea;
+
 		if (alpha >= 0 && beta >= 0 && gamma >= 0)
 		{
 			//inside the circle
 			hInfo.p = hitPoint;
 			hInfo.z = t;
+			if (rays.ray.dir.Dot(triNormal) > 0)
+				hInfo.front = false;
+			else
+				hInfo.front = true;
 			Point3 intrapolatedNormal = GetNormal(faceID, Point3(alpha, beta, gamma));
 			intrapolatedNormal.Normalize();
 			hInfo.N = intrapolatedNormal;
-			/*if (rays.ray.dir.Dot(intrapolatedNormal) > 0)
-				hInfo.N = intrapolatedNormal;
-			else
-				hInfo.N = -intrapolatedNormal;*/
-
 			hInfo.uvw = GetTexCoord(faceID, Point3(alpha, beta, gamma));
+			
 			// ray differential sampling
 			if (rays.status)
 			{
